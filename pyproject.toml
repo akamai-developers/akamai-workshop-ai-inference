@@ -1,0 +1,28 @@
+[project]
+name = "agents-that-own-their-inference"
+version = "0.1.0"
+description = "Hands-on workshop: operate and tune your own vLLM inference server on a dedicated GPU."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Du'An Lightfoot", email = "dlightfo@akamai.com" }]
+
+# Core dependencies for the notebooks. Mirrors requirements.txt.
+# vllm and guidellm are environment-provided and intentionally not listed here.
+dependencies = [
+    "openai>=1.40",
+    "requests>=2.31",
+    "prometheus-client>=0.20",
+    "matplotlib>=3.8",
+    "jupyterlab>=4.0",
+    "nbformat>=5.10",
+]
+
+[project.optional-dependencies]
+# The quantization lab (section 06) only. Heavy install, isolated here.
+quantize = ["llmcompressor>=0.3"]
+
+[tool.uv]
+# uv users: `uv sync` installs the core set, `uv sync --extra quantize` adds the
+# quantization dependencies for section 06.
+package = false
