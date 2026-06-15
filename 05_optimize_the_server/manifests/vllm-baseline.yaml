@@ -1,0 +1,103 @@
+# Baseline vLLM deployment for the workshop.
+#
+# This manifest is DELIBERATELY UNDER-TUNED. It runs, it serves, and it leaves
+# obvious headroom on the table so you have something real to optimize in
+# section 05. The four flags you will change are marked TUNE THIS below.
+#
+# It reads the model id from the MODEL_NAME env var so the same manifest works
+# for any small model. Nothing here is specific to one cluster: no node names,
+# no IPs, no secrets. The Service is named `vllm` on port 8000, which is the
+# default the notebooks expect for VLLM_HOST=http://vllm:8000/v1.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm
+  labels:
+    app: vllm
+spec:
+  replicas: 1
+  # Recreate, not the default RollingUpdate: the pod holds the whole GPU, so a
+  # rolling update would deadlock (the new pod cannot get the card until the old
+  # one frees it, and a rolling update will not free the old until the new is
+  # ready). Recreate terminates the old pod first, then starts the new one.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: vllm
+  template:
+    metadata:
+      labels:
+        app: vllm
+    spec:
+      # Don't inject Kubernetes service-link env vars. The Service is named
+      # `vllm`, so Kubernetes would set VLLM_PORT=tcp://<ip>:8000, which vLLM
+      # misreads as its own port and refuses to start. See vLLM env-vars docs.
+      enableServiceLinks: false
+      containers:
+        - name: vllm
+          image: vllm/vllm-openai:latest
+          args:
+            - "--model"
+            - "$(MODEL_NAME)"
+            - "--port"
+            - "8000"
+            # Tool calling, so this same server can back an agent in lab 09.
+            # kagent's runtime always sends tool-call requests; without these the
+            # agent gets a 400. `hermes` is the parser for Qwen models. Use an
+            # instruct model (MODEL_NAME) for the agent to behave well.
+            - "--enable-auto-tool-choice"
+            - "--tool-call-parser"
+            - "hermes"
+            # ---- TUNE THIS in section 05 ----
+            # Fraction of GPU memory vLLM may use. Low on purpose: most of the
+            # card is left unused, so the KV cache is tiny and concurrency is
+            # capped early. Raising this is usually the biggest single win.
+            - "--gpu-memory-utilization"
+            - "0.40"
+            # Max context length the engine reserves cache for. Short on purpose.
+            # Larger values allow longer prompts and outputs but cost KV memory.
+            - "--max-model-len"
+            - "2048"
+            # Max requests in the running batch at once. Low on purpose, so the
+            # batch fills and requests queue earlier than they need to.
+            - "--max-num-seqs"
+            - "16"
+            # Max tokens the scheduler will batch per step (prefill + decode).
+            # Low on purpose; raising it lets bigger prefills run together.
+            - "--max-num-batched-tokens"
+            - "2048"
+            # ---- end TUNE THIS ----
+          env:
+            # Set MODEL_NAME to the model your environment serves. The platform
+            # injects this; for Path B, edit it here or patch it before apply.
+            - name: MODEL_NAME
+              value: "Qwen/Qwen3-4B"
+          ports:
+            - containerPort: 8000
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+            requests:
+              nvidia.com/gpu: 1
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vllm
+  labels:
+    app: vllm
+spec:
+  selector:
+    app: vllm
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
