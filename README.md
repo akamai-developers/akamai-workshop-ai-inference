@@ -6,6 +6,15 @@ Every production agent today rents its intelligence. You pay per token, you send
 
 The focus is not agent frameworks. It is the inference layer underneath them: continuous batching under real concurrency, KV cache tradeoffs, vLLM metrics, quantization, and the bottlenecks that only show up when you run the server yourself.
 
+## Start here
+
+Two ways in. Pick yours:
+
+- **At the Akamai workshop (Path A).** You have an access card. Open its URL, sign in with the password, and you land in JupyterLab with this repo cloned and a dedicated GPU and vLLM already running. Open `00_prerequisites/00_connect_and_verify.ipynb` and work the numbered folders in order. Nothing to install.
+- **Running it yourself (Path B).** Stand up the infrastructure with the separate [`akamai-workshop-platform`](https://github.com/akamai-developers/akamai-workshop-platform) repo (the own-inference workshop), install `requirements.txt`, set the environment variables in the table below, then open Module 0.
+
+The same notebooks run in both. Details for each path are in [The two prerequisite paths](#the-two-prerequisite-paths).
+
 ## Who this is for
 
 Engineers who already call an LLM API and want to understand what happens when they bring inference in-house. You are comfortable with Python and the basics of containers. No deep Kubernetes or vLLM background is assumed. The notebooks teach the concepts; the environment removes the setup.
@@ -75,7 +84,7 @@ The vLLM Prometheus metrics URL is derived from `VLLM_HOST` automatically (the s
 | 6 Quantization | Quantize with LLM Compressor and measure the accuracy tradeoff | 20 min |
 | 7 Two models, one GPU | Run two models on one card and route between them | 12 min |
 | 8 Benchmark and evaluate | Sweep speed, cost, and accuracy; pick an operating point | 20 min |
-| 9 Agents on Kubernetes | Deploy an agent with kagent on the inference you tuned | 12 min |
+| 9 Agents on Kubernetes | Deploy an agent on the inference you tuned and talk to it | 12 min |
 
 The full set runs longer than a single 120-minute session, so the live workshop runs the spine (Modules 0 through 5, plus 7 or 9) and leaves Modules 6 and 8 as the take-home depth.
 
@@ -90,7 +99,7 @@ The full set runs longer than a single 120-minute session, so the live workshop 
 - **`06_quantization_with_llm_compressor/`** Shrink the footprint, measure the cost in quality.
 - **`07_two_models_one_gpu/`** Two models sharing a card, with routing.
 - **`08_benchmark_and_evaluate/`** Speed, cost, and accuracy together, with a recommended operating point.
-- **`09_optional_agents_on_k8s/`** Put an agent on the inference you tuned, with kagent. The payoff.
+- **`09_optional_agents_on_k8s/`** Put an agent on the inference you tuned, as a plain Deployment in your namespace. The payoff.
 
 ## Repo layout
 
@@ -112,7 +121,7 @@ agents-that-own-their-inference/
 
 ## Open source
 
-Every tool in this workshop is open source: vLLM, LLM Compressor, GuideLLM, kagent, and the Qwen models. You can run all of it on hardware you control, with no vendor lock-in on the inference layer. That is the point. Owning your inference means owning the stack underneath your agent, and these open source projects are what make that practical today.
+Every tool in this workshop is open source: vLLM, LLM Compressor, GuideLLM, and the Qwen models. You can run all of it on hardware you control, with no vendor lock-in on the inference layer. That is the point. Owning your inference means owning the stack underneath your agent, and these open source projects are what make that practical today.
 
 ## License
 

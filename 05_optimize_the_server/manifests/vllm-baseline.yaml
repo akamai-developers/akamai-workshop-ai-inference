@@ -37,25 +37,33 @@ spec:
       enableServiceLinks: false
       containers:
         - name: vllm
-          image: vllm/vllm-openai:latest
+          # Pin to the version your platform serves so the engine args and the
+          # /metrics names you learned against do not drift. Match this to your
+          # serving vLLM (the hosted workshop runs v0.20.2).
+          image: vllm/vllm-openai:v0.20.2
           args:
             - "--model"
             - "$(MODEL_NAME)"
             - "--port"
             - "8000"
-            # Tool calling, so this same server can back an agent in lab 09.
-            # kagent's runtime always sends tool-call requests; without these the
-            # agent gets a 400. `hermes` is the parser for Qwen models. Use an
-            # instruct model (MODEL_NAME) for the agent to behave well.
+            # Tool calling plus reasoning, so this same server can back the agent in
+            # lab 09. `hermes` is the tool-call parser for Qwen models; the reasoning
+            # parser splits the model's <think> block out of the answer and the
+            # tool-call JSON. The measurement labs send enable_thinking=false to keep
+            # benchmarks clean (common/config.py); the agent leaves thinking on so it
+            # reasons before it picks a tool (09_.../agent/agent.py).
             - "--enable-auto-tool-choice"
             - "--tool-call-parser"
             - "hermes"
+            - "--reasoning-parser"
+            - "deepseek_r1"
             # ---- TUNE THIS in section 05 ----
-            # Fraction of GPU memory vLLM may use. Low on purpose: most of the
-            # card is left unused, so the KV cache is tiny and concurrency is
-            # capped early. Raising this is usually the biggest single win.
+            # Fraction of GPU memory vLLM may use. Low on purpose, so the KV cache
+            # is tiny and concurrency is capped early. Raising this is usually the
+            # biggest single win. Floor for a 4B model on a 20GB card: 0.40 fails to
+            # start (no room for cache blocks), so 0.50 is the under-tuned baseline.
             - "--gpu-memory-utilization"
-            - "0.40"
+            - "0.50"
             # Max context length the engine reserves cache for. Short on purpose.
             # Larger values allow longer prompts and outputs but cost KV memory.
             - "--max-model-len"
@@ -70,10 +78,17 @@ spec:
             - "2048"
             # ---- end TUNE THIS ----
           env:
-            # Set MODEL_NAME to the model your environment serves. The platform
-            # injects this; for Path B, edit it here or patch it before apply.
+            # The model THIS pod serves. It must match MODEL_NAME in your notebook
+            # environment (settings.model_name), or the notebook will ask for a model
+            # this server does not serve and get a 404. The workshop runs the hybrid
+            # Qwen/Qwen3-4B (it can reason for the agent); for Path B set your own.
             - name: MODEL_NAME
               value: "Qwen/Qwen3-4B"
+            # Use the plain Hugging Face downloader. The newer xet downloader has
+            # been seen stalling at 0 B/s on some clusters, which looks like a pod
+            # stuck pulling weights with no error. Harmless if xet is not in play.
+            - name: HF_HUB_DISABLE_XET
+              value: "1"
           ports:
             - containerPort: 8000
           resources:

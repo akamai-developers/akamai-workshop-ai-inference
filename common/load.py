@@ -2,8 +2,8 @@
 
 The hosted workshop image ships the ``vllm`` CLI, whose ``vllm bench serve``
 drives concurrent load and reports throughput and latency percentiles. When
-that CLI is not on PATH -- for example running these notebooks against a remote
-endpoint from a laptop -- this module reproduces the essential measurement with
+that CLI is not on PATH (for example, running these notebooks against a remote
+endpoint from a laptop), this module reproduces the essential measurement with
 the OpenAI client: fire ``num_prompts`` streaming requests at a fixed
 concurrency, record TTFT and per-token latency for each, and sample the vLLM
 KV-cache and queue gauges from /metrics while the load runs.
@@ -17,6 +17,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 from . import metrics
+from .config import chat_extra
 
 DEFAULT_PROMPT = "Write a detailed paragraph about GPU memory and how it is used."
 
@@ -48,7 +49,10 @@ def run_level(client, model, metrics_url, concurrency, num_prompts=None,
     """
     num_prompts = num_prompts or max(concurrency * 4, 16)
     # Per-request timeout, no retries: a load generator must never block forever.
+    # with_options returns a fresh client COPY, which drops the build_client wrapper,
+    # so we re-apply the per-model kwargs (Qwen3 thinking off) at the call site below.
     client = client.with_options(timeout=request_timeout, max_retries=0)
+    extra = chat_extra(model)
 
     peak = {"kv": 0.0, "waiting": 0.0}
 
@@ -84,6 +88,7 @@ def run_level(client, model, metrics_url, concurrency, num_prompts=None,
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=output_len, temperature=0.0, stream=True,
                 stream_options={"include_usage": True},
+                **extra,
             )
             for chunk in stream:
                 if chunk.choices and chunk.choices[0].delta.content:

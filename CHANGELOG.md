@@ -3,6 +3,62 @@
 All notable changes to this workshop are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Changed
+- Rewrote Module 9 to drop kagent and the Discord bridge. The agent is now a plain
+  Kubernetes Deployment in your own namespace: a small HTTP service (`agent/agent.py`,
+  the openai client as its only dependency, mounted from a ConfigMap) plus a Service.
+  You apply the manifest, port-forward, and talk to it in scope and out of scope to see
+  the system-prompt guardrails hold, then watch vLLM `/metrics` move as it answers. No
+  CRDs, no controller, no helm, nothing cluster-scoped, so a scoped kubeconfig can run
+  it. Closes on where scale-to-zero fits (KServe/Knative for replicas, the autoscaler
+  for nodes).
+- `common/config.py` reads the platform's native `VLLM_HOST`, `MODEL_NAME`, and
+  `VLLM_API_KEY` directly, so the workshop drops into the deployed environment with no
+  variable translation. Added namespace resolution (env, then the active kube-context,
+  then `default`).
+- Trimmed `requirements.txt` to the five packages the notebooks import. Dropped
+  `llmcompressor` (it pulls torch and OOMs the 1 Gi notebook pod; Module 6 installs it
+  on demand behind a guard) and the unused `prometheus-client`. Replaced the leftover
+  `.env.example` with this workshop's variables.
+
+### Fixed
+- Set the workshop model to the hybrid `Qwen/Qwen3-4B` and wired thinking end to end.
+  It reasons (emits `<think>`) when asked, which Module 9's agent needs to reason before
+  it picks a tool. `vllm-baseline.yaml` now serves it with `--reasoning-parser deepseek_r1`
+  alongside `--tool-call-parser hermes`, so the thinking is split out of the answer and
+  the tool-call JSON. NOTE: the platform's own-inference preset must serve this same model
+  id; its catalog default points at the non-thinking `Qwen/Qwen3-4B-Instruct-2507`, and a
+  mismatch makes Module 5's apply and the Module 9 agent 404. Notebooks read
+  `settings.model_name`, so they follow whatever the platform injects.
+- Thinking is on where it helps and off where it does not. The measurement labs send
+  `enable_thinking=false` (via `build_client` / `chat_extra`) so benchmarks count answer
+  tokens, not a `<think>` block; `agent/agent.py` sends `enable_thinking=true` so the
+  agent reasons. Both still drop an empty `tools=[]`, which vLLM 0.20+ rejects.
+- `common/load.py` re-applies the per-model kwargs at the call site. `run_level` copies
+  the client with `with_options(...)` for a per-request timeout, which drops the
+  `build_client` wrapper, so the pure-Python load path would otherwise lose the Qwen3
+  handling. Correct for any thinking Qwen3 and honest about what the wrapper guarantees.
+- `09_optional_agents_on_k8s`: corrected a note that claimed the platform NetworkPolicy
+  already lets `app: agent` reach vLLM. It does not; the agent is a new client the
+  workspace-to-vLLM rule does not cover, so the note now states the rule the cluster
+  needs for the capstone to connect.
+- Baseline `--gpu-memory-utilization` raised from `0.40` to `0.50`. On a 20 GB card a
+  4B model's weights leave `0.40` with no room for KV cache blocks, so vLLM fails to
+  start; `0.50` is the working under-tuned floor the module raises from. Updated the
+  manifest, its README, and the Module 5 notebook.
+- Added `HF_HUB_DISABLE_XET=1` to the vLLM pods. The newer xet downloader has stalled
+  at 0 B/s on some clusters, which looks like a pod stuck pulling weights with no error.
+  Harmless if xet is not in play.
+- `00_prerequisites`: replaced `kubectl get nodes` (Forbidden under the scoped
+  per-student RBAC) with a namespace pod listing that shows the node and GPU.
+- `06_quantization_with_llm_compressor`: a `RUN_QUANTIZE` guard so the module reads and
+  runs cleanly when the notebook pod has no GPU, with the quantize cells opt-in.
+- `07_two_models_one_gpu`: the notebook now deploys `two-models.yaml` (scaling the
+  baseline `vllm` to zero first) and cleans up after, instead of assuming both servers
+  are already running.
+
 ## [1.1.0] - 2026-06-15
 
 ### Changed
