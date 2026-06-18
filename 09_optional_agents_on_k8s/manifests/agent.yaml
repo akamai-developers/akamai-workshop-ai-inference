@@ -1,0 +1,73 @@
+# The solutions-architect agent, deployed on the inference you tuned.
+#
+# It is a plain Deployment, not a framework: a small HTTP service (agent/agent.py,
+# mounted from a ConfigMap) that wraps each request with a system prompt and calls
+# your in-namespace vLLM by its Service name. You reach it with kubectl port-forward.
+#
+# Nothing cluster-scoped: no CRDs, no controller, no helm. It runs entirely in your
+# own namespace, which your scoped kubeconfig can manage. The pod is labelled
+# app: agent. NOTE: on a cluster that enforces the default-deny NetworkPolicy, the
+# namespace must allow app=agent to reach the vLLM pod on 8000 (the agent is a new
+# client the workspace-to-vLLM rule does not cover); the platform's own-inference
+# preset must include that rule for this lab to connect.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sa-agent
+  labels:
+    app: agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: agent
+  template:
+    metadata:
+      labels:
+        app: agent
+    spec:
+      containers:
+        - name: agent
+          image: python:3.12-slim
+          # Install the one dependency (the openai client) at start, then run the
+          # agent. Light and fast: no torch, no framework, a few seconds.
+          command: ["/bin/sh", "-c", "pip install -q openai && python /app/agent.py"]
+          env:
+            # Your in-namespace vLLM, by Service name. Same namespace, so the short
+            # name resolves and no cross-namespace FQDN is needed.
+            - name: VLLM_BASE_URL
+              value: "http://vllm:8000/v1"
+            # The model your vLLM serves; must match it or the agent gets a 404.
+            # The hybrid Qwen/Qwen3-4B can reason before tool calls. Edit if yours differs.
+            - name: MODEL_NAME
+              value: "Qwen/Qwen3-4B"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          volumeMounts:
+            - name: code
+              mountPath: /app
+      volumes:
+        - name: code
+          configMap:
+            name: agent-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sa-agent
+  labels:
+    app: agent
+spec:
+  selector:
+    app: agent
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080

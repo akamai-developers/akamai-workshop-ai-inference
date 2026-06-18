@@ -74,7 +74,7 @@ Each module is its own folder with one notebook and the assets that module needs
 ```
 agents-that-own-their-inference/
 ├── README.md                       # the why, the agenda, the two prereq paths, how to start
-├── requirements.txt                # python deps for the notebooks (openai, requests, plotting, llmcompressor, etc.)
+├── requirements.txt                # python deps for the notebooks (openai, requests, matplotlib, jupyterlab, nbformat)
 ├── pyproject.toml                  # optional uv-managed dependency file
 ├── common/
 │   ├── config.py                   # reads VLLM_HOST, MODEL_NAME, NAMESPACE, KUBECONFIG from env with sane defaults
@@ -174,14 +174,13 @@ Each entry lists the objective, what the participant does, the key concepts, an 
 - **Live path:** sampled in Module 4; full version is self-paced.
 
 ### 09 - Deploy your agent on the inference you own (12 min, the capstone)
-- **Objective:** put an agent on top of the inference you just tuned, deploy it to your namespace with kagent, and talk to it from your phone.
+- **Objective:** put an agent on top of the inference you just tuned, deploy it to your namespace as a plain Kubernetes Deployment, and talk to it.
 - **Do:**
-  1. Install kagent with helm, CRDs first, then the controller, following the reference lab.
-  2. Create a `ModelConfig` that points at YOUR in-cluster vLLM Service, then an `Agent` CRD that uses it. Run `kagent invoke` to test.
-  3. Connect a Discord bridge so you can chat with the agent from your phone, reusing the `nba-discord-agent` pattern.
-- **Agent theme (recommended): an Akamai Cloud helper / solutions-architect agent** that answers questions about Akamai Cloud and your cluster. It is on brand, it reinforces the thesis (an agent running on inference you own), and it is more reusable than a trivia bot. The `nba-discord-agent` is the ready-made alternative if you want a lower-build-risk demo. The agent's brain is the kagent CRD pointed at your vLLM; the Discord bridge is reused glue.
-- **Concepts:** kagent `Agent` and `ModelConfig` CRDs, pointing an agent at a private vLLM endpoint, optional tools via `RemoteMCPServer`, the Discord bridge.
-- **Conference caveat:** a Discord bot per student needs a bot token and a Discord app, which is setup tax in a live room. Default to `kagent invoke` or a simple phone-reachable chat at your `sNN` URL during the session, and document Discord as the take-home extension. If you want Discord live, pre-create bot tokens and hand them out on the access card.
+  1. Apply the agent manifest: a small HTTP service (the agent code mounted from a ConfigMap, the openai client as its only dependency) plus a Service, all in your own namespace.
+  2. Port-forward to the agent and send it questions, in scope and out of scope, to see the system-prompt guardrails hold.
+  3. Watch vLLM `/metrics` move as the agent calls it, closing the loop: the model answering is the vLLM you tuned, on the GPU you own.
+- **Agent theme: an Akamai Cloud solutions-architect agent** that answers questions about Akamai Cloud and your cluster, with in-scope and out-of-scope guardrails in its system prompt. It is on brand and it reinforces the thesis (an agent running on inference you own). It is the same persona the full Akamai Solutions Architect Agent workshop builds, kept to chat only here so the capstone stays about inference, not agent plumbing.
+- **Concepts:** an agent as a plain client of a private vLLM endpoint, scoped RBAC and NetworkPolicy keeping it in its namespace, where scale-to-zero would fit (KServe/Knative for replicas, the cluster autoscaler for nodes).
 - **Live path:** the payoff. Run it if time allows; it is where the whole workshop lands, with the inference layer still the lesson underneath.
 
 ---
@@ -209,11 +208,11 @@ Modules 6 and 8 are the depth the attendees take home.
 
 - Python with the `openai` client pointed at the vLLM OpenAI-compatible endpoint.
 - `requests` and a Prometheus text parser for scraping vLLM `/metrics`.
-- `matplotlib` or `plotly` for live throughput and latency plots.
+- `matplotlib` for live throughput and latency plots.
 - `vllm` CLI for `vllm bench serve` (load generation already whitelisted by the platform NetworkPolicy).
-- `llmcompressor` for the quantization module.
+- `llmcompressor` for the quantization module, installed on demand in Module 6 (GPU only), not in the base requirements.txt.
 - `kubectl` available in the JupyterLab terminal, with a namespace-scoped kubeconfig.
-- A small model that fits one 20 GB card, for example Qwen3-4B or a 1.5B to 3B model when splitting the GPU.
+- A small model that fits one 20 GB card, for example the hybrid Qwen/Qwen3-4B or a 1.5B to 3B model when splitting the GPU.
 
 ---
 
@@ -237,10 +236,10 @@ Modules 6 and 8 are the depth the attendees take home.
 - Reference single-GPU vLLM benchmarks: https://www.databasemart.com/blog/vllm-gpu-benchmark-a6000
 
 **Agents and serving (Module 9)**
-- kagent: https://kagent.dev/ and https://github.com/kagent-dev/kagent
-- Reference kagent install lab (CRDs first, then controller; ModelConfig points at in-cluster vLLM): https://labeveryday.github.io/learn-k8s/07-kagent/lab-01-install-kagent/
-- Discord bridge pattern (instructor's working example): https://github.com/labeveryday/nba-discord-agent
-- kserve: https://kserve.github.io/website/
+- OpenAI-compatible server in vLLM (the API the agent calls): https://docs.vllm.ai/en/latest/serving/openai_compatible_server.html
+- Tool calling in vLLM (hermes parser for Qwen): https://docs.vllm.ai/en/latest/features/tool_calling.html
+- kserve (where scale-to-zero for inference fits): https://kserve.github.io/website/
+- Knative scale-to-zero: https://knative.dev/docs/serving/autoscaling/scale-to-zero/
 - agentgateway: https://agentgateway.dev/
 
 **Instructor-provided references (to fold in)**
