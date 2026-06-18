@@ -37,7 +37,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: vllm
-          image: vllm/vllm-openai:latest
+          image: vllm/vllm-openai:v0.20.2   # pin to your serving vLLM version
           args:
             - "--model"
             - "$(FAST_MODEL)"
@@ -51,6 +51,10 @@ spec:
           env:
             - name: FAST_MODEL
               value: "Qwen/Qwen2.5-1.5B-Instruct"
+            # Plain HF downloader; the xet downloader has stalled at 0 B/s on some
+            # clusters. Harmless if xet is not in play.
+            - name: HF_HUB_DISABLE_XET
+              value: "1"
           ports:
             - containerPort: 8000
           resources:
@@ -93,7 +97,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: vllm
-          image: vllm/vllm-openai:latest
+          image: vllm/vllm-openai:v0.20.2   # pin to your serving vLLM version
           args:
             - "--model"
             - "$(SMART_MODEL)"
@@ -106,6 +110,10 @@ spec:
           env:
             - name: SMART_MODEL
               value: "Qwen/Qwen2.5-3B-Instruct"
+            # Plain HF downloader; the xet downloader has stalled at 0 B/s on some
+            # clusters. Harmless if xet is not in play.
+            - name: HF_HUB_DISABLE_XET
+              value: "1"
           ports:
             - containerPort: 8000
           resources:

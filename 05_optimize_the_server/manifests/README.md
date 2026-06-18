@@ -8,7 +8,7 @@ prove the gain by re-running the load sweep.
 
 | Flag | Baseline | What it does | The tradeoff |
 |---|---|---|---|
-| `--gpu-memory-utilization` | `0.40` | Fraction of GPU memory vLLM may use. Most of it becomes KV cache. | Higher means more cache and more concurrency, until you risk an out-of-memory at load. Often the biggest single win. |
+| `--gpu-memory-utilization` | `0.50` | Fraction of GPU memory vLLM may use. Most of it becomes KV cache. | Higher means more cache and more concurrency, until you risk an out-of-memory at load. Often the biggest single win. (A 4B model on a 20GB card needs at least 0.50 to start; 0.40 leaves no room for the cache and fails.) |
 | `--max-model-len` | `2048` | Longest context (prompt + output) the engine reserves cache for. | Higher allows longer requests but each running request reserves more KV blocks, so fewer fit at once. |
 | `--max-num-seqs` | `16` | Max requests in the running batch. | Higher raises throughput until the KV cache runs out; too high causes preemption. |
 | `--max-num-batched-tokens` | `2048` | Max tokens the scheduler batches per step. | Higher lets larger prefills run together (better throughput) at the cost of longer per-step latency. |
