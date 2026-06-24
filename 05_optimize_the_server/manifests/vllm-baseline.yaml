@@ -56,7 +56,7 @@ spec:
             - "--tool-call-parser"
             - "hermes"
             - "--reasoning-parser"
-            - "deepseek_r1"
+            - "qwen3"
             # ---- TUNE THIS in section 05 ----
             # Fraction of GPU memory vLLM may use. Low on purpose, so the KV cache
             # is tiny and concurrency is capped early. Raising this is usually the
