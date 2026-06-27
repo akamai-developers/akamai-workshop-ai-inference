@@ -56,10 +56,18 @@ client.chat.completions.create = _vllm_create
 
 
 def answer(message):
+    runtime_context = (
+        f"You are currently calling model {MODEL} at {client.base_url}. "
+        "If asked what powers you, name that model and endpoint. "
+        "Do not invent exact plan names, region names, or CLI flags; when exact "
+        "operational syntax matters, say to verify it against the current Akamai "
+        "Cloud or Linode CLI documentation."
+    )
     resp = client.chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": runtime_context},
             {"role": "user", "content": message},
         ],
         max_tokens=300,
