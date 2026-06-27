@@ -46,16 +46,16 @@ cache in seconds.
 
 ```python
 from common import vllm_admin
-vllm_admin.AVAILABLE_MODELS          # the three pre-cached Qwen3 models
-vllm_admin.switch_model("Qwen/Qwen3-0.6B")
+vllm_admin.AVAILABLE_MODELS          # served target models, not draft models
+vllm_admin.switch_model("RedHatAI/Qwen3-4B-FP8-dynamic")
 ```
 
 ## Where each piece is used
 
 - Module 1, 3: light reads. One streamed request for TTFT and TPOT, the KV gauge under a
   few requests.
-- Module 4: `switch_model()` to compare a small and a large dense model's decode rate, a
-  live read of why decode is memory-bound.
+- Module 4: one live decode-rate read plus a bandwidth estimate; the 0.6B model stays
+  reserved for Module 6 speculative decoding.
 - Module 7 (Omer): the full `sweep()` plus `watch()` to drive saturation and read the knee.
 - Module 8 (Omer): `watch()` before and after a `--gpu-memory-utilization` or
   `--max-num-seqs` change, to prove the tune.
