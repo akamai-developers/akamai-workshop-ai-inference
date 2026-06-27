@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Module 4 architecture</title>
+<style>
+  :root { --navy:#1b1a3d; --purple:#6c5ce7; --grey:#eef0f4; --grey-b:#e2e3ea;
+          --ink:#1b1a3d; --muted:#5c5c74; --line:#9a9ab0; --green:#2fa56a; --red:#d9534f; }
+  * { box-sizing:border-box; margin:0; padding:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body { background:#fff; }
+  #diagram { width:1000px; padding:34px 40px 32px; background:#fff; color:var(--ink); }
+  .kicker { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--muted); margin-bottom:16px; }
+  .banner { background:var(--grey); border:1px solid var(--grey-b); border-radius:12px;
+            padding:13px 16px; font-size:13.5px; line-height:1.5; margin-bottom:22px; }
+  .banner b { font-weight:700; }
+  .wrap { display:flex; gap:26px; align-items:center; }
+  .chart { flex:0 0 auto; }
+  .side { flex:1; }
+  .side .h { font-size:13.5px; font-weight:700; color:var(--navy); margin-bottom:6px; }
+  .side p { font-size:12.5px; color:var(--muted); line-height:1.5; margin-bottom:14px; }
+  .dot { display:inline-block; width:10px; height:10px; border-radius:50%; vertical-align:middle; margin-right:6px; }
+  .foot { font-size:12px; color:var(--muted); margin-top:20px; line-height:1.5; }
+  text { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+</style>
+</head>
+<body>
+  <div id="diagram">
+    <div class="kicker">Module 4 &nbsp;&middot;&nbsp; Why decode is memory-bound</div>
+    <div class="banner">To make one token, the server reads <b>every weight once</b>. So decode is capped by
+      how fast the card reads memory, not by how much math it can do.</div>
+
+    <div class="wrap">
+      <svg class="chart" width="520" height="300" viewBox="0 0 520 300">
+        <!-- axes -->
+        <line x1="60" y1="250" x2="500" y2="250" stroke="#9a9ab0" stroke-width="1.5"/>
+        <line x1="60" y1="250" x2="60" y2="30" stroke="#9a9ab0" stroke-width="1.5"/>
+        <text x="280" y="285" font-size="12" fill="#5c5c74" text-anchor="middle">arithmetic intensity (FLOPs per byte)</text>
+        <text x="22" y="140" font-size="12" fill="#5c5c74" text-anchor="middle" transform="rotate(-90 22 140)">attainable compute</text>
+        <!-- memory-bound sloped line then flat compute ceiling -->
+        <polyline points="60,250 300,70 500,70" fill="none" stroke="#1b1a3d" stroke-width="2.5"/>
+        <!-- ridge marker -->
+        <line x1="300" y1="70" x2="300" y2="250" stroke="#9a9ab0" stroke-width="1.2" stroke-dasharray="5 4"/>
+        <text x="300" y="266" font-size="11" fill="#1b1a3d" text-anchor="middle" font-weight="700">ridge point ~297</text>
+        <!-- labels for the two halves -->
+        <text x="150" y="205" font-size="11" fill="#5c5c74" text-anchor="middle">memory-bound</text>
+        <text x="365" y="56" font-size="11" fill="#5c5c74" text-anchor="middle">compute-bound</text>
+        <!-- decode dot, low on the slope -->
+        <circle cx="92" cy="226" r="6" fill="#d9534f"/>
+        <text x="104" y="230" font-size="11.5" fill="#d9534f" font-weight="600">decode at batch 1</text>
+        <!-- prefill dot, near the top -->
+        <circle cx="460" cy="70" r="6" fill="#2fa56a"/>
+        <text x="460" y="91" font-size="11.5" fill="#2fa56a" font-weight="600" text-anchor="middle">prefill</text>
+      </svg>
+
+      <div class="side">
+        <div class="h"><span class="dot" style="background:#d9534f"></span>Decode reads all the weights</div>
+        <p>One token, every weight. It sits far down the memory side, using a fraction of a percent of the card's compute.</p>
+        <div class="h"><span class="dot" style="background:#2fa56a"></span>Prefill does a lot of math per byte</div>
+        <p>It reads the prompt once and reuses each weight across many tokens, so it sits near the compute ceiling.</p>
+        <div class="h">MoE reads fewer weights</div>
+        <p>A Mixture-of-Experts model routes each token to a few experts, so it moves far fewer bytes per token than its total size.</p>
+      </div>
+    </div>
+
+    <div class="foot">RTX 4000 Ada: about 107 TFLOP/s dense FP16 over 360 GB/s, so the ridge point sits near 297 FLOPs per byte.
+      Quantization, FlashAttention, speculative decoding, and batching are four more ways to beat the memory limit.</div>
+  </div>
+</body>
+</html>
