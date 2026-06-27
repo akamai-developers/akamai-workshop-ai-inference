@@ -8,8 +8,8 @@ own resources.
 
 A vLLM server loads ONE model, fixed by --model at startup. "Switching" means patching
 that flag and letting the Deployment's Recreate strategy restart the pod. Every model in
-`AVAILABLE_MODELS` is pre-cached in the PVC, so the restart loads from cache in seconds,
-not a re-download.
+`AVAILABLE_MODELS` is pre-cached in the PVC, so the restart loads from the PVC cache in
+about 75 to 105 seconds, not a re-download.
 
 All three workshop models are Qwen3 thinking models, so the reasoning and tool-call
 parser flags stay correct across switches. You can move freely between them.
