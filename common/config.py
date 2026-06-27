@@ -22,7 +22,7 @@ from dataclasses import dataclass
 # Default base URL assumes the vLLM Service is reachable as ``vllm`` on port
 # 8000 inside your namespace. Override with VLLM_HOST when you run elsewhere.
 DEFAULT_VLLM_HOST = "http://vllm:8000/v1"
-DEFAULT_MODEL_NAME = "Qwen/Qwen3-4B"
+DEFAULT_MODEL_NAME = "RedHatAI/Qwen3-4B-FP8-dynamic"
 DEFAULT_NAMESPACE = "default"
 
 

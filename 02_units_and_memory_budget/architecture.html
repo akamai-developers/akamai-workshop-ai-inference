@@ -5,7 +5,7 @@
 <title>Module 2 architecture</title>
 <style>
   :root { --navy:#1b1a3d; --purple:#6c5ce7; --grey:#eef0f4; --grey-b:#e2e3ea;
-          --ink:#1b1a3d; --muted:#5c5c74; --w:#1b1a3d; --o:#9a9ab0; --kv:#6c5ce7; }
+          --ink:#1b1a3d; --muted:#5c5c74; --kv:#6c5ce7; --w:#1b1a3d; }
   * { box-sizing:border-box; margin:0; padding:0;
       font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
   body { background:#fff; }
@@ -15,55 +15,54 @@
   .banner { background:var(--grey); border:1px solid var(--grey-b); border-radius:12px;
             padding:13px 16px; font-size:13.5px; line-height:1.5; margin-bottom:24px; }
   .banner b { font-weight:700; }
-  .row { display:flex; gap:40px; align-items:flex-end; justify-content:center; }
+  .row { display:flex; gap:46px; align-items:flex-end; justify-content:center; }
   .col { display:flex; flex-direction:column; align-items:center; }
-  .bar { width:150px; display:flex; flex-direction:column-reverse; border-radius:8px; overflow:hidden;
+  .bar { width:160px; display:flex; flex-direction:column-reverse; border-radius:8px; overflow:hidden;
          border:1px solid var(--grey-b); }
-  .seg { display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; }
+  .seg { display:flex; align-items:center; justify-content:center; color:#fff; font-size:12.5px; font-weight:600; }
   .seg.w  { background:var(--w); }
-  .seg.o  { background:var(--o); }
   .seg.kv { background:var(--kv); }
-  .cap { margin-top:10px; font-size:13px; font-weight:700; color:var(--navy); }
+  .cap { margin-top:10px; font-size:13.5px; font-weight:700; color:var(--navy); }
   .cap small { display:block; font-weight:500; font-size:11px; color:var(--muted); margin-top:2px; }
-  .legend { display:flex; gap:20px; justify-content:center; margin-top:26px; }
-  .key { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); }
+  .arrow { align-self:center; font-size:26px; color:#9a9ab0; padding-bottom:90px; }
+  .legend { display:flex; gap:22px; justify-content:center; margin-top:26px; }
+  .key { display:flex; align-items:center; gap:8px; font-size:12.5px; }
   .sw { width:14px; height:14px; border-radius:3px; }
   .foot { font-size:12px; color:var(--muted); margin-top:22px; line-height:1.5; text-align:center; }
 </style>
 </head>
 <body>
   <div id="diagram">
-    <div class="kicker">Module 2 &nbsp;&middot;&nbsp; What a model costs in memory</div>
-    <div class="banner">A 20 GB card is a budget. The weights take a fixed slice, and what is left is
-      <b>KV cache</b>, the part you trade for more users. Spend fewer bytes per weight and the cache grows.</div>
+    <div class="kicker">Module 2 &nbsp;&middot;&nbsp; The budget is agent capacity</div>
+    <div class="banner">The card's VRAM splits into weights and <b>KV cache</b>. Your server starts
+      under-tuned at <b>0.7</b>, so the cache is small. One flag, <b>0.9</b>, grows it by half again,
+      and that cache is how many agent sessions fit.</div>
 
     <div class="row">
       <div class="col">
         <div class="bar">
-          <div class="seg w"  style="height:144px">weights 8 GB</div>
-          <div class="seg o"  style="height:18px">1</div>
-          <div class="seg kv" style="height:162px">KV cache 9 GB</div>
+          <div class="seg w"  style="height:90px">weights 6 GB</div>
+          <div class="seg kv" style="height:120px">KV cache 8 GB</div>
         </div>
-        <div class="cap">FP16<small>2 bytes per weight</small></div>
+        <div class="cap">0.7 default<small>under-tuned</small></div>
       </div>
+      <div class="arrow">&rarr;</div>
       <div class="col">
         <div class="bar">
-          <div class="seg w"  style="height:72px">weights 4 GB</div>
-          <div class="seg o"  style="height:18px">1</div>
-          <div class="seg kv" style="height:234px">KV cache 13 GB</div>
+          <div class="seg w"  style="height:90px">weights 6 GB</div>
+          <div class="seg kv" style="height:180px">KV cache 12 GB</div>
         </div>
-        <div class="cap">FP8<small>1 byte per weight</small></div>
+        <div class="cap">0.9 tuned<small>Module 9</small></div>
       </div>
     </div>
 
     <div class="legend">
-      <div class="key"><span class="sw" style="background:#1b1a3d"></span> weights (fixed)</div>
-      <div class="key"><span class="sw" style="background:#9a9ab0"></span> overhead</div>
-      <div class="key"><span class="sw" style="background:#6c5ce7"></span> KV cache (your budget for users)</div>
+      <div class="key"><span class="sw" style="background:#1b1a3d"></span> weights (the FP8 4B, fixed)</div>
+      <div class="key"><span class="sw" style="background:#6c5ce7"></span> KV cache (your budget for agent sessions)</div>
     </div>
 
-    <div class="foot">Model size is parameters times bytes. A 4B model is 8 GB at FP16, 4 GB at FP8.
-      The freed memory becomes KV cache, so more requests fit on the same card.</div>
+    <div class="foot">Each agent carries a long, growing context, so doubling its context roughly halves
+      how many fit. Raising gpu-memory-utilization is the cheapest way to host more agents on one card.</div>
   </div>
 </body>
 </html>

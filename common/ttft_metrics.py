@@ -32,9 +32,11 @@ _HIST = {
 }
 # Counters reported as a per-second rate over the window.
 _COUNTER = {
-    "gen_tokens":    ["vllm:generation_tokens_total"],
-    "prompt_tokens": ["vllm:prompt_tokens_total"],
-    "preemptions":   ["vllm:num_preemptions_total"],
+    "gen_tokens":      ["vllm:generation_tokens_total"],
+    "prompt_tokens":   ["vllm:prompt_tokens_total"],
+    "preemptions":     ["vllm:num_preemptions_total"],
+    "prefix_queries":  ["vllm:prefix_cache_queries_total", "vllm:prefix_cache_queries"],
+    "prefix_hits":     ["vllm:prefix_cache_hits_total", "vllm:prefix_cache_hits"],
 }
 # Gauges read at the end of the window.
 _GAUGE = {
@@ -103,6 +105,10 @@ def vllm_stats(window_s: float = 5.0) -> dict:
         out[label + "_per_s"] = round(rate, 1)
     for label, bases in _GAUGE.items():
         out[label] = _first(b, bases) or 0.0
+    # Prefix-cache hit rate over the window: hits / queries (token granularity).
+    dq = (_first(b, _COUNTER["prefix_queries"]) or 0) - (_first(a, _COUNTER["prefix_queries"]) or 0)
+    dh = (_first(b, _COUNTER["prefix_hits"]) or 0) - (_first(a, _COUNTER["prefix_hits"]) or 0)
+    out["prefix_hit_rate"] = round(dh / dq, 3) if dq > 0 else None
     return out
 
 

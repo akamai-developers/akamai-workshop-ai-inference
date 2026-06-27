@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Module 1 agent loop</title>
+<style>
+  :root { --navy:#1b1a3d; --purple:#6c5ce7; --grey:#eef0f4; --grey-b:#e2e3ea;
+          --ink:#1b1a3d; --muted:#5c5c74; --line:#9a9ab0; --peach:#fbe6d2; }
+  * { box-sizing:border-box; margin:0; padding:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body { background:#fff; }
+  #diagram { width:1000px; padding:34px 40px 30px; background:#fff; color:var(--ink); }
+  .kicker { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--muted); margin-bottom:18px; }
+  .cols { display:flex; gap:22px; }
+  .card { flex:1; border:1px solid var(--grey-b); border-radius:14px; padding:18px; background:#fbfbfd; }
+  .card.hi { border-color:var(--purple); box-shadow:0 0 0 3px rgba(108,92,231,.12); }
+  .card h3 { font-size:15px; color:var(--navy); margin-bottom:4px; }
+  .card .sub { font-size:12px; color:var(--muted); margin-bottom:14px; }
+  .pill { display:inline-block; border-radius:9px; padding:9px 12px; font-size:12.5px; font-weight:600; margin:3px 2px; }
+  .navy { background:var(--navy); color:#fff; } .pur { background:var(--purple); color:#fff; }
+  .plain { background:#fff; border:1.5px solid var(--navy); color:var(--navy); }
+  .step { color:var(--line); font-size:18px; vertical-align:middle; }
+  .loop { margin-top:12px; border:1.5px dashed var(--purple); border-radius:11px; padding:12px; position:relative; }
+  .loop .tag { position:absolute; top:-10px; left:14px; background:#fbfbfd; padding:0 8px;
+               font-size:11px; font-weight:700; color:var(--purple); }
+  .grow { font-size:11.5px; color:var(--muted); margin-top:9px; }
+  .taxes { display:flex; gap:10px; margin-top:20px; }
+  .tax { flex:1; border:1px solid var(--grey-b); border-radius:10px; background:#fff; padding:10px 11px; }
+  .tax b { font-size:12px; color:var(--navy); display:block; }
+  .tax span { font-size:11px; color:var(--muted); }
+  .foot { font-size:12px; color:var(--muted); margin-top:18px; line-height:1.5; }
+</style>
+</head>
+<body>
+  <div id="diagram">
+    <div class="kicker">Module 1 &nbsp;&middot;&nbsp; A chatbot is one request, an agent is a loop</div>
+
+    <div class="cols">
+      <div class="card">
+        <h3>Chatbot</h3>
+        <div class="sub">one request, then done</div>
+        <span class="pill plain">prompt</span>
+        <span class="step">&rarr;</span>
+        <span class="pill navy">prefill</span>
+        <span class="step">&rarr;</span>
+        <span class="pill pur">decode</span>
+        <div class="grow">One prefill, one decode. The cost is one request.</div>
+      </div>
+
+      <div class="card hi">
+        <h3>Agent</h3>
+        <div class="sub">a loop, every step a new request on your GPU</div>
+        <div class="loop">
+          <div class="tag">REACT LOOP</div>
+          <span class="pill plain">system + tools</span>
+          <span class="pill plain">+ Thought</span>
+          <span class="pill plain">+ Action</span>
+          <span class="pill plain">+ Observation</span>
+          <span class="step">&#8635;</span>
+        </div>
+        <div class="grow">Every step re-sends the whole growing prompt, prefills it, and decodes a
+          reasoning trace. The prompt never shrinks.</div>
+      </div>
+    </div>
+
+    <div class="taxes">
+      <div class="tax"><b>Context grows</b><span>2048 cap is a ceiling (M2)</span></div>
+      <div class="tax"><b>Re-prefill</b><span>cache the prefix (M3)</span></div>
+      <div class="tax"><b>Fan-out</b><span>preemption (M3)</span></div>
+      <div class="tax"><b>Slow step</b><span>stalls the chain (M1)</span></div>
+      <div class="tax"><b>Reasoning</b><span>thinking costs decode (M4)</span></div>
+    </div>
+
+    <div class="foot">The inference layer you build in these modules is the agent's latency and cost
+      budget. Each tax above lands on one module.</div>
+  </div>
+</body>
+</html>

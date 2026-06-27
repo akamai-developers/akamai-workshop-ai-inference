@@ -42,7 +42,7 @@ loadtest.sweep([1, 8, 32, 64, 128])   # throughput climbs, then TTFT p95 turns u
 ## Switch the model
 
 vLLM serves one model per process. Switching restarts the pod and loads from the PVC
-cache in seconds.
+cache in about 75 to 105 seconds.
 
 ```python
 from common import vllm_admin
