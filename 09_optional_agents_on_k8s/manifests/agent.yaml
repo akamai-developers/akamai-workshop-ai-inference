@@ -5,11 +5,13 @@
 # your in-namespace vLLM by its Service name. You reach it with kubectl port-forward.
 #
 # Nothing cluster-scoped: no CRDs, no controller, no helm. It runs entirely in your
-# own namespace, which your scoped kubeconfig can manage. The pod is labelled
-# app: agent. NOTE: on a cluster that enforces the default-deny NetworkPolicy, the
-# namespace must allow app=agent to reach the vLLM pod on 8000 (the agent is a new
-# client the workspace-to-vLLM rule does not cover); the platform's own-inference
-# preset must include that rule for this lab to connect.
+# own namespace, which your scoped kubeconfig can manage. The pod keeps the
+# app=agent label expected by the platform NetworkPolicy, and adds
+# component=sa-agent so this Service selects only the capstone agent. NOTE: on a
+# cluster that enforces the default-deny NetworkPolicy, the namespace must allow
+# app=agent to reach the vLLM pod on 8000 (the agent is a new client the
+# workspace-to-vLLM rule does not cover); the platform's own-inference preset must
+# include that rule for this lab to connect.
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,15 +19,18 @@ metadata:
   name: sa-agent
   labels:
     app: agent
+    component: sa-agent
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: agent
+      component: sa-agent
   template:
     metadata:
       labels:
         app: agent
+        component: sa-agent
     spec:
       containers:
         - name: agent
@@ -38,10 +43,10 @@ spec:
             # name resolves and no cross-namespace FQDN is needed.
             - name: VLLM_BASE_URL
               value: "http://vllm:8000/v1"
-            # The model your vLLM serves; must match it or the agent gets a 404.
-            # The hybrid Qwen/Qwen3-4B can reason before tool calls. Edit if yours differs.
+            # The model your vLLM serves after Modules 5-8; must match it or the
+            # agent gets a 404. Edit if yours differs.
             - name: MODEL_NAME
-              value: "Qwen/Qwen3-4B"
+              value: "RedHatAI/Qwen3-4B-FP8-dynamic"
           ports:
             - containerPort: 8080
           readinessProbe:
@@ -64,9 +69,11 @@ metadata:
   name: sa-agent
   labels:
     app: agent
+    component: sa-agent
 spec:
   selector:
     app: agent
+    component: sa-agent
   ports:
     - name: http
       port: 8080
