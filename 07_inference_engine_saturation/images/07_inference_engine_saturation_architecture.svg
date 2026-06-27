@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="760" viewBox="0 0 800 760" role="img" aria-labelledby="title desc">
+  <title id="title">Continuous batching and the saturation knee</title>
+  <desc id="desc">Incoming requests enter a queue, vLLM forms a running batch, KV cache fills, and throughput rises until a saturation knee where latency grows faster than throughput.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 18; }
+      .queue { fill: #fef3c7; stroke: #d97706; stroke-width: 2; rx: 14; }
+      .batch { fill: #dbeafe; stroke: #2563eb; stroke-width: 2; rx: 14; }
+      .cache { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; rx: 14; }
+      .warn { fill: #fee2e2; stroke: #dc2626; stroke-width: 2; rx: 14; }
+      .text { font-family: Inter, Arial, sans-serif; fill: #0f172a; }
+      .muted { font-family: Inter, Arial, sans-serif; fill: #475569; }
+      .small { font-size: 19px; }
+      .body { font-size: 23px; }
+      .head { font-size: 32px; font-weight: 700; }
+      .label { font-size: 21px; font-weight: 700; }
+      .axis { stroke: #334155; stroke-width: 3; fill: none; }
+      .line { stroke: #2563eb; stroke-width: 5; fill: none; }
+      .lat { stroke: #dc2626; stroke-width: 5; fill: none; stroke-dasharray: 10 10; }
+      .arrow { stroke: #334155; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="800" height="760"/>
+  <text class="text head" x="60" y="62">Batch until the knee</text>
+  <text class="muted body" x="60" y="100">Throughput climbs until queueing, cache pressure, or latency wins.</text>
+
+  <rect class="panel" x="60" y="135" width="680" height="245"/>
+  <text class="text label" x="95" y="180">Continuous batching loop</text>
+
+  <rect class="queue" x="95" y="220" width="130" height="66"/>
+  <text class="text small" x="130" y="260">Queue</text>
+  <path class="arrow" d="M 238 253 L 310 253"/>
+
+  <rect class="batch" x="325" y="205" width="170" height="96"/>
+  <text class="text small" x="374" y="245">Running</text>
+  <text class="text small" x="386" y="272">batch</text>
+  <path class="arrow" d="M 505 253 L 575 253"/>
+
+  <rect class="cache" x="590" y="220" width="125" height="66"/>
+  <text class="text small" x="622" y="248">KV</text>
+  <text class="text small" x="607" y="272">cache</text>
+
+  <path class="arrow" d="M 650 300 C 590 350, 235 350, 160 300"/>
+  <text class="muted small" x="245" y="365">finished requests leave, new requests join</text>
+
+  <rect class="panel" x="60" y="410" width="680" height="235"/>
+  <text class="text label" x="95" y="455">Saturation curve</text>
+  <path class="axis" d="M 140 595 L 675 595"/>
+  <path class="axis" d="M 140 595 L 140 485"/>
+  <text class="muted small" x="330" y="630">concurrency</text>
+  <text class="muted small" x="90" y="500">throughput</text>
+
+  <path class="line" d="M 150 575 C 245 520, 355 492, 455 490 C 540 488, 610 488, 660 488"/>
+  <path class="lat" d="M 150 582 C 280 578, 390 565, 470 535 C 555 505, 610 468, 660 430"/>
+  <circle cx="455" cy="490" r="9" fill="#2563eb"/>
+  <text class="text small" x="475" y="498">knee</text>
+  <text class="muted small" x="310" y="520">tokens/sec flattens</text>
+  <text class="muted small" x="545" y="450">TTFT rises</text>
+
+  <rect class="warn" x="95" y="670" width="610" height="58"/>
+  <text class="text label" x="130" y="706">Past the knee, concurrency mostly buys waiting time.</text>
+</svg>

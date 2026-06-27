@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="760" viewBox="0 0 800 760" role="img" aria-labelledby="title desc">
+  <title id="title">Speculative decoding with a draft model and target verifier</title>
+  <desc id="desc">A prompt flows to a small draft model, then to a target verifier that accepts the matching prefix and discards the rest.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 2; rx: 18; }
+      .draft { fill: #dcfce7; stroke: #16a34a; stroke-width: 2; rx: 18; }
+      .target { fill: #e0f2fe; stroke: #0284c7; stroke-width: 2; rx: 18; }
+      .token { fill: #fef3c7; stroke: #d97706; stroke-width: 2; rx: 10; }
+      .accept { fill: #bbf7d0; stroke: #16a34a; stroke-width: 2; rx: 10; }
+      .reject { fill: #fee2e2; stroke: #dc2626; stroke-width: 2; rx: 10; }
+      .text { font-family: Inter, Arial, sans-serif; fill: #0f172a; }
+      .muted { font-family: Inter, Arial, sans-serif; fill: #475569; }
+      .small { font-size: 19px; }
+      .body { font-size: 23px; }
+      .head { font-size: 32px; font-weight: 700; }
+      .label { font-size: 21px; font-weight: 700; }
+      .arrow { stroke: #334155; stroke-width: 4; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect class="bg" x="0" y="0" width="800" height="760"/>
+  <text class="text head" x="60" y="62">Draft, verify, accept the prefix</text>
+  <text class="muted body" x="60" y="100">The drafter guesses tokens. The target verifies them.</text>
+
+  <rect class="panel" x="70" y="135" width="220" height="90"/>
+  <text class="text label" x="100" y="172">Prompt</text>
+  <text class="muted small" x="100" y="202">current context</text>
+
+  <path class="arrow" d="M 300 180 L 380 180"/>
+
+  <rect class="draft" x="400" y="125" width="310" height="110"/>
+  <text class="text label" x="430" y="165">Draft model</text>
+  <text class="muted small" x="430" y="195">0.6B FP8 Qwen</text>
+  <text class="muted small" x="430" y="220">linear chain: t1, t2, t3, t4</text>
+
+  <path class="arrow" d="M 555 245 L 555 300"/>
+
+  <rect class="target" x="430" y="315" width="280" height="105"/>
+  <text class="text label" x="460" y="355">Target verifier</text>
+  <text class="muted small" x="460" y="385">4B FP8 Qwen checks draft</text>
+
+  <text class="text label" x="70" y="305">Drafted tokens</text>
+  <rect class="token" x="70" y="330" width="74" height="54"/>
+  <text class="text body" x="95" y="365">t1</text>
+  <rect class="token" x="158" y="330" width="74" height="54"/>
+  <text class="text body" x="183" y="365">t2</text>
+  <rect class="token" x="246" y="330" width="74" height="54"/>
+  <text class="text body" x="271" y="365">t3</text>
+  <rect class="token" x="334" y="330" width="74" height="54"/>
+  <text class="text body" x="359" y="365">t4</text>
+
+  <path class="arrow" d="M 555 430 L 555 490"/>
+
+  <text class="text label" x="70" y="495">Verifier result</text>
+  <rect class="accept" x="70" y="520" width="74" height="54"/>
+  <text class="text body" x="95" y="555">t1</text>
+  <rect class="accept" x="158" y="520" width="74" height="54"/>
+  <text class="text body" x="183" y="555">t2</text>
+  <rect class="reject" x="246" y="520" width="162" height="54"/>
+  <text class="text body" x="285" y="555">discard</text>
+
+  <rect class="panel" x="430" y="505" width="280" height="115"/>
+  <text class="text label" x="460" y="545">Speedup comes from</text>
+  <text class="text label" x="460" y="574">accepted tokens per</text>
+  <text class="text label" x="460" y="603">target step.</text>
+
+  <rect class="panel" x="70" y="650" width="640" height="58"/>
+  <text class="muted small" x="100" y="686">Accepted prefix: t1, t2. Rejected draft tokens are discarded.</text>
+</svg>
