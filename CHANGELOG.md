@@ -6,6 +6,18 @@ All notable changes to this workshop are recorded here. The format follows
 ## [Unreleased]
 
 ### Changed
+- Reworked the Module 5-8 arc around inference performance levers instead of
+  GPU sharing: Module 5 now measures BF16 performance, manually switches the shared
+  `manifests/vllm.yaml` deployment to FP8, and leaves FP8 as the baseline for
+  Module 6 speculative decoding, Module 7 batching/saturation, and Module 8
+  vLLM tuning plus benchmark/evaluation.
+- Expanded Module 6 into a live speculative decoding exercise. Students add a
+  `--speculative-config` using the pre-cached `RedHatAI/Qwen3-0.6B-FP8-dynamic`
+  draft model, compare before/after throughput, and survey draft-model,
+  n-gram/suffix, MTP, Medusa, EAGLE, and diffusion-style approaches.
+- Removed GPU time-slicing from the workshop path. Two-model co-location is no
+  longer a required student exercise; the content now stays focused on serving
+  behavior that works against a single dedicated vLLM endpoint.
 - Rewrote Module 9 to drop kagent and the Discord bridge. The agent is now a plain
   Kubernetes Deployment in your own namespace: a small HTTP service (`agent/agent.py`,
   the openai client as its only dependency, mounted from a ConfigMap) plus a Service.
@@ -18,19 +30,19 @@ All notable changes to this workshop are recorded here. The format follows
   `VLLM_API_KEY` directly, so the workshop drops into the deployed environment with no
   variable translation. Added namespace resolution (env, then the active kube-context,
   then `default`).
-- Trimmed `requirements.txt` to the five packages the notebooks import. Dropped
-  `llmcompressor` (it pulls torch and OOMs the 1 Gi notebook pod; Module 6 installs it
-  on demand behind a guard) and the unused `prometheus-client`. Replaced the leftover
-  `.env.example` with this workshop's variables.
+- Trimmed `requirements.txt` to the five packages the notebooks import. Left
+  quantization tooling out of the main workshop environment and removed the unused
+  `prometheus-client`. Replaced the leftover `.env.example` with this workshop's
+  variables.
 
 ### Fixed
 - Set the workshop model to the hybrid `Qwen/Qwen3-4B` and wired thinking end to end.
   It reasons (emits `<think>`) when asked, which Module 9's agent needs to reason before
-  it picks a tool. `vllm-baseline.yaml` now serves it with `--reasoning-parser deepseek_r1`
+  it picks a tool. `manifests/vllm.yaml` serves it with `--reasoning-parser qwen3`
   alongside `--tool-call-parser hermes`, so the thinking is split out of the answer and
   the tool-call JSON. NOTE: the platform's own-inference preset must serve this same model
   id; its catalog default points at the non-thinking `Qwen/Qwen3-4B-Instruct-2507`, and a
-  mismatch makes Module 5's apply and the Module 9 agent 404. Notebooks read
+  mismatch makes Module 8's apply and the Module 9 agent 404. Notebooks read
   `settings.model_name`, so they follow whatever the platform injects.
 - Thinking is on where it helps and off where it does not. The measurement labs send
   `enable_thinking=false` (via `build_client` / `chat_extra`) so benchmarks count answer
@@ -46,18 +58,18 @@ All notable changes to this workshop are recorded here. The format follows
   needs for the capstone to connect.
 - Baseline `--gpu-memory-utilization` raised from `0.40` to `0.50`. On a 20 GB card a
   4B model's weights leave `0.40` with no room for KV cache blocks, so vLLM fails to
-  start; `0.50` is the working under-tuned floor the module raises from. Updated the
-  manifest, its README, and the Module 5 notebook.
+  start; `0.50` is the working under-tuned floor the tuning module raises from.
+  Updated the manifest, its README, and the Module 8 notebook.
 - Added `HF_HUB_DISABLE_XET=1` to the vLLM pods. The newer xet downloader has stalled
   at 0 B/s on some clusters, which looks like a pod stuck pulling weights with no error.
   Harmless if xet is not in play.
 - `00_prerequisites`: replaced `kubectl get nodes` (Forbidden under the scoped
   per-student RBAC) with a namespace pod listing that shows the node and GPU.
-- `06_quantization_with_llm_compressor`: a `RUN_QUANTIZE` guard so the module reads and
-  runs cleanly when the notebook pod has no GPU, with the quantize cells opt-in.
-- `07_two_models_one_gpu`: the notebook now deploys `two-models.yaml` (scaling the
-  baseline `vllm` to zero first) and cleans up after, instead of assuming both servers
-  are already running.
+- `05_quantization`: removed the main-path dependency on LLM Compressor. The
+  module now points quantization tooling to optional follow-up material and keeps
+  the live workshop focused on the BF16-to-FP8 deployment switch and performance
+  measurement. Workload evals are discussed as production discipline instead of
+  run as a hands-on artifact.
 
 ## [1.1.0] - 2026-06-15
 

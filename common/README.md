@@ -56,8 +56,8 @@ vllm_admin.switch_model("Qwen/Qwen3-0.6B")
   few requests.
 - Module 4: `switch_model()` to compare a small and a large dense model's decode rate, a
   live read of why decode is memory-bound.
-- Module 8 (Omer): the full `sweep()` plus `watch()` to drive saturation and read the knee.
-- Module 9 (Du'An): `watch()` before and after a `--gpu-memory-utilization` or
+- Module 7 (Omer): the full `sweep()` plus `watch()` to drive saturation and read the knee.
+- Module 8 (Omer): `watch()` before and after a `--gpu-memory-utilization` or
   `--max-num-seqs` change, to prove the tune.
 
 ## Metrics the watcher surfaces
