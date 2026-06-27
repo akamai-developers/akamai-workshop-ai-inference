@@ -1,13 +1,31 @@
-# Canonical vLLM deployment for Modules 5-8.
+# Canonical per-student vLLM deployment for Modules 5-8.
+#
+# This mirrors the platform-created dedicated vLLM shape: model-cache PVC,
+# /models download directory, /dev/shm, GPU node selection, startup probe,
+# and the same engine flags used by the rehearsal deployment.
 #
 # Starting state for Module 5:
-#   MODEL_NAME = Qwen/Qwen3-4B
+#   --model=Qwen/Qwen3-4B
 #
 # In Module 5, manually edit this same file to:
-#   MODEL_NAME = RedHatAI/Qwen3-4B-FP8-dynamic
+#   --model=RedHatAI/Qwen3-4B-FP8-dynamic
 #
 # Do not reset it after Module 5. The FP8 deployment becomes the forward
 # baseline for speculative decoding, saturation, and final vLLM tuning.
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vllm-model-cache
+  labels:
+    app: vllm
+spec:
+  storageClassName: linode-block-storage
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 50Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,6 +35,7 @@ metadata:
     app: vllm
 spec:
   replicas: 1
+  progressDeadlineSeconds: 1800
   # Recreate avoids a GPU deadlock during updates: the old pod releases the GPU
   # before the replacement pod is scheduled.
   strategy:
@@ -29,56 +48,117 @@ spec:
       labels:
         app: vllm
     spec:
+      automountServiceAccountToken: false
       # Prevent Kubernetes service-link variables such as VLLM_PORT from being
       # injected into the container. vLLM may misread those as its own settings.
       enableServiceLinks: false
+      nodeSelector:
+        pool: gpu
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+      initContainers:
+        - name: predownload-models
+          image: vllm/vllm-openai:v0.20.2
+          command:
+            - /bin/sh
+            - -c
+          args:
+            - |
+              set -eu
+              echo "Pre-downloading into $DL_DIR: $PREDOWNLOAD_MODELS"
+              for m in $(echo "$PREDOWNLOAD_MODELS" | tr ',' ' '); do
+                [ -z "$m" ] && continue
+                echo ">> $m"
+                M="$m" python3 -c "import os; from huggingface_hub import snapshot_download; snapshot_download(os.environ['M'], cache_dir=os.environ['DL_DIR'])"
+              done
+              echo "pre-download complete"
+          env:
+            - name: PREDOWNLOAD_MODELS
+              value: "Qwen/Qwen3-4B,RedHatAI/Qwen3-4B-FP8-dynamic,RedHatAI/Qwen3-0.6B-FP8-dynamic"
+            - name: DL_DIR
+              value: /models
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-secrets
+                  key: HUGGING_FACE_HUB_TOKEN
+                  optional: true
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
       containers:
         - name: vllm
           image: vllm/vllm-openai:v0.20.2
           args:
-            - "--model"
-            - "$(MODEL_NAME)"
-            - "--port"
-            - "8000"
-            # Qwen3 tool and reasoning parsers. The measurement helpers disable
-            # Qwen3 thinking per request so benchmark tokens are answer tokens.
+            - "--model=Qwen/Qwen3-4B"
+            - "--download-dir=/models"
+            - "--tensor-parallel-size=1"
+            - "--gpu-memory-utilization=0.7"
+            - "--max-model-len=8192"
+            - "--host=0.0.0.0"
+            - "--port=8000"
+            - "--reasoning-parser=qwen3"
             - "--enable-auto-tool-choice"
-            - "--tool-call-parser"
-            - "hermes"
-            - "--reasoning-parser"
-            - "qwen3"
-            # Baseline tuning flags. Leave these in place during Module 5; later
-            # modules tune scheduler and cache behavior on top of the FP8 model.
-            - "--gpu-memory-utilization"
-            - "0.50"
-            - "--max-model-len"
-            - "2048"
-            - "--max-num-seqs"
-            - "16"
-            - "--max-num-batched-tokens"
-            - "2048"
+            - "--tool-call-parser=hermes"
             # Module 6 adds speculative decoding here:
-            # - "--speculative-config"
-            # - '{"method":"draft_model","model":"RedHatAI/Qwen3-0.6B-FP8-dynamic","num_speculative_tokens":4,"draft_tensor_parallel_size":1}'
+            # - "--speculative-config={\"method\":\"draft_model\",\"model\":\"RedHatAI/Qwen3-0.6B-FP8-dynamic\",\"num_speculative_tokens\":4,\"draft_tensor_parallel_size\":1}"
           env:
-            # Module 5 changes this value to RedHatAI/Qwen3-4B-FP8-dynamic.
-            - name: MODEL_NAME
-              value: "Qwen/Qwen3-4B"
-            - name: HF_HUB_DISABLE_XET
-              value: "1"
+            - name: HUGGING_FACE_HUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: vllm-secrets
+                  key: HUGGING_FACE_HUB_TOKEN
+                  optional: true
           ports:
             - containerPort: 8000
+              name: http
           resources:
+            requests:
+              cpu: "2"
+              memory: 8Gi
+              nvidia.com/gpu: 1
             limits:
               nvidia.com/gpu: 1
-            requests:
-              nvidia.com/gpu: 1
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            seccompProfile:
+              type: RuntimeDefault
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            periodSeconds: 10
+            failureThreshold: 180
           readinessProbe:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 30
             periodSeconds: 10
+          volumeMounts:
+            - name: model-cache
+              mountPath: /models
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: model-cache
+          persistentVolumeClaim:
+            claimName: vllm-model-cache
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
 ---
 apiVersion: v1
 kind: Service
