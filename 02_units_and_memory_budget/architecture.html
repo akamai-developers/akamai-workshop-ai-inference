@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Module 2 architecture</title>
+<style>
+  :root { --navy:#1b1a3d; --purple:#6c5ce7; --grey:#eef0f4; --grey-b:#e2e3ea;
+          --ink:#1b1a3d; --muted:#5c5c74; --w:#1b1a3d; --o:#9a9ab0; --kv:#6c5ce7; }
+  * { box-sizing:border-box; margin:0; padding:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body { background:#fff; }
+  #diagram { width:1000px; padding:34px 40px 32px; background:#fff; color:var(--ink); }
+  .kicker { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--muted); margin-bottom:16px; }
+  .banner { background:var(--grey); border:1px solid var(--grey-b); border-radius:12px;
+            padding:13px 16px; font-size:13.5px; line-height:1.5; margin-bottom:24px; }
+  .banner b { font-weight:700; }
+  .row { display:flex; gap:40px; align-items:flex-end; justify-content:center; }
+  .col { display:flex; flex-direction:column; align-items:center; }
+  .bar { width:150px; display:flex; flex-direction:column-reverse; border-radius:8px; overflow:hidden;
+         border:1px solid var(--grey-b); }
+  .seg { display:flex; align-items:center; justify-content:center; color:#fff; font-size:12px; font-weight:600; }
+  .seg.w  { background:var(--w); }
+  .seg.o  { background:var(--o); }
+  .seg.kv { background:var(--kv); }
+  .cap { margin-top:10px; font-size:13px; font-weight:700; color:var(--navy); }
+  .cap small { display:block; font-weight:500; font-size:11px; color:var(--muted); margin-top:2px; }
+  .legend { display:flex; gap:20px; justify-content:center; margin-top:26px; }
+  .key { display:flex; align-items:center; gap:8px; font-size:12.5px; color:var(--ink); }
+  .sw { width:14px; height:14px; border-radius:3px; }
+  .foot { font-size:12px; color:var(--muted); margin-top:22px; line-height:1.5; text-align:center; }
+</style>
+</head>
+<body>
+  <div id="diagram">
+    <div class="kicker">Module 2 &nbsp;&middot;&nbsp; What a model costs in memory</div>
+    <div class="banner">A 20 GB card is a budget. The weights take a fixed slice, and what is left is
+      <b>KV cache</b>, the part you trade for more users. Spend fewer bytes per weight and the cache grows.</div>
+
+    <div class="row">
+      <div class="col">
+        <div class="bar">
+          <div class="seg w"  style="height:144px">weights 8 GB</div>
+          <div class="seg o"  style="height:18px">1</div>
+          <div class="seg kv" style="height:162px">KV cache 9 GB</div>
+        </div>
+        <div class="cap">FP16<small>2 bytes per weight</small></div>
+      </div>
+      <div class="col">
+        <div class="bar">
+          <div class="seg w"  style="height:72px">weights 4 GB</div>
+          <div class="seg o"  style="height:18px">1</div>
+          <div class="seg kv" style="height:234px">KV cache 13 GB</div>
+        </div>
+        <div class="cap">FP8<small>1 byte per weight</small></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="key"><span class="sw" style="background:#1b1a3d"></span> weights (fixed)</div>
+      <div class="key"><span class="sw" style="background:#9a9ab0"></span> overhead</div>
+      <div class="key"><span class="sw" style="background:#6c5ce7"></span> KV cache (your budget for users)</div>
+    </div>
+
+    <div class="foot">Model size is parameters times bytes. A 4B model is 8 GB at FP16, 4 GB at FP8.
+      The freed memory becomes KV cache, so more requests fit on the same card.</div>
+  </div>
+</body>
+</html>
