@@ -32,12 +32,22 @@ spec:
         app: agent
         component: sa-agent
     spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: agent
           image: python:3.12-slim
           # Install the one dependency (the openai client) at start, then run the
           # agent. Light and fast: no torch, no framework, a few seconds.
-          command: ["/bin/sh", "-c", "pip install -q openai && python /app/agent.py"]
+          command: ["/bin/sh", "-c", "python -m venv /tmp/venv && /tmp/venv/bin/pip install -q openai && /tmp/venv/bin/python /app/agent.py"]
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
           env:
             # Your in-namespace vLLM, by Service name. Same namespace, so the short
             # name resolves and no cross-namespace FQDN is needed.
