@@ -11,17 +11,16 @@ that flag and letting the Deployment's Recreate strategy restart the pod. Every 
 `AVAILABLE_MODELS` is pre-cached in the PVC, so the restart loads from cache in seconds,
 not a re-download.
 
-All three workshop models are Qwen3 thinking models, so the reasoning and tool-call
-parser flags stay correct across switches. You can move freely between them.
+The 0.6B model is intentionally not listed here. It is a speculative decoding
+draft model for Module 6, not a standalone target model students should serve.
 """
 import json as _json
 import subprocess
 
-# Models pre-cached in the PVC (must match the deploy's --predownload-models).
+# Served target models pre-cached in the PVC (must match the deploy's --predownload-models).
 AVAILABLE_MODELS = [
+    "Qwen/Qwen3-4B",
     "RedHatAI/Qwen3-4B-FP8-dynamic",
-    "RedHatAI/Qwen3-0.6B-FP8-dynamic",
-    "Qwen/Qwen3-0.6B",
 ]
 
 
@@ -41,6 +40,12 @@ def switch_model(model: str, timeout: str = "300s") -> str:
     Returns the model name once the new pod reports Ready. Set `model` in your
     OpenAI client requests afterward, or read it back from MODEL_NAME.
     """
+    if model not in AVAILABLE_MODELS:
+        allowed = ", ".join(AVAILABLE_MODELS)
+        raise ValueError(
+            f"{model!r} is not a supported served target model. "
+            f"Allowed: {allowed}. The 0.6B model is only a speculative draft model."
+        )
     patch = ('[{"op":"replace","path":"/spec/template/spec/containers/0/args/0",'
              f'"value":"--model={model}"}}]')
     subprocess.run(["kubectl", "patch", "deployment", "vllm",
@@ -87,5 +92,5 @@ def set_engine_arg(flag: str, value, timeout: str = "300s") -> list:
 
 # The raw kubectl the helper runs, for the kubectl-teaching labs:
 #   kubectl patch deployment vllm --type=json \
-#     -p='[{"op":"replace","path":"/spec/template/spec/containers/0/args/0","value":"--model=Qwen/Qwen3-0.6B"}]'
+#     -p='[{"op":"replace","path":"/spec/template/spec/containers/0/args/0","value":"--model=RedHatAI/Qwen3-4B-FP8-dynamic"}]'
 #   kubectl rollout status deployment/vllm
