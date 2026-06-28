@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Module 3 architecture</title>
+<style>
+  :root { --navy:#1b1a3d; --purple:#6c5ce7; --grey:#eef0f4; --grey-b:#e2e3ea;
+          --ink:#1b1a3d; --muted:#5c5c74; --line:#9a9ab0; --green:#2fa56a; }
+  * { box-sizing:border-box; margin:0; padding:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body { background:#fff; }
+  #diagram { width:1000px; padding:34px 40px 30px; background:#fff; color:var(--ink); }
+  .kicker { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--muted); margin-bottom:16px; }
+  .banner { background:var(--grey); border:1px solid var(--grey-b); border-radius:12px;
+            padding:13px 16px; font-size:13.5px; line-height:1.5; margin-bottom:24px; }
+  .banner b { font-weight:700; }
+  .flow { display:flex; align-items:center; gap:12px; }
+  .phase { flex:1; border-radius:12px; padding:16px 16px 14px; }
+  .phase.pre { background:var(--navy); color:#fff; }
+  .phase.dec { background:var(--purple); color:#fff; }
+  .phase h3 { font-size:14.5px; font-weight:700; }
+  .phase .met { font-size:11px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; opacity:.85; margin:2px 0 8px; }
+  .phase p { font-size:11.5px; line-height:1.5; opacity:.95; }
+  .arrow { flex:0 0 auto; text-align:center; }
+  .arrow .gly { font-size:22px; color:var(--line); }
+  .arrow .lab { font-size:10.5px; font-weight:600; color:var(--muted); white-space:nowrap; }
+  .cache { margin-top:22px; border:1px solid var(--grey-b); border-radius:12px; padding:16px 18px; background:#fbfbfd; }
+  .cache .h { font-size:12px; font-weight:700; color:var(--navy); letter-spacing:.04em; text-transform:uppercase; margin-bottom:12px; }
+  .blocks { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  .blk { width:30px; height:30px; border-radius:6px; }
+  .blk.p { background:var(--navy); }
+  .blk.d { background:var(--purple); }
+  .blk.n { background:#fff; border:1.5px dashed var(--line); }
+  .blocks .plus { font-size:13px; color:var(--muted); font-weight:700; margin:0 4px; }
+  .blocks .grow { font-size:11px; color:var(--muted); margin-left:6px; }
+  .clabel { display:flex; gap:26px; margin-top:12px; font-size:11.5px; color:var(--muted); }
+  .clabel .sw { display:inline-block; width:12px; height:12px; border-radius:3px; vertical-align:middle; margin-right:6px; }
+  .foot { font-size:12px; color:var(--muted); margin-top:20px; line-height:1.5; }
+  .foot b { color:var(--ink); }
+</style>
+</head>
+<body>
+  <div id="diagram">
+    <div class="kicker">Module 3 &nbsp;&middot;&nbsp; Prefill once, then decode token by token</div>
+    <div class="banner">A request runs in two phases. <b>Prefill</b> reads the whole prompt in one parallel pass
+      and fills the KV cache. <b>Decode</b> then generates one token at a time, appending its key and value to
+      the cache at every step.</div>
+
+    <div class="flow">
+      <div class="phase pre">
+        <h3>Prefill</h3>
+        <div class="met">time to first token</div>
+        <p>One parallel pass over the whole prompt. Fast per token. Fills the cache with the prompt's keys and values.</p>
+      </div>
+      <div class="arrow">
+        <div class="gly">&rarr;</div>
+        <div class="lab">then loop</div>
+      </div>
+      <div class="phase dec">
+        <h3>Decode</h3>
+        <div class="met">time per output token</div>
+        <p>One token at a time, each step reading every weight and the growing cache. Sequential, so this is the slow phase.</p>
+      </div>
+    </div>
+
+    <div class="cache">
+      <div class="h">The KV cache grows one token per decode step</div>
+      <div class="blocks">
+        <div class="blk p"></div><div class="blk p"></div><div class="blk p"></div>
+        <div class="blk p"></div><div class="blk p"></div>
+        <span class="plus">+</span>
+        <div class="blk d"></div><div class="blk d"></div><div class="blk d"></div>
+        <div class="blk n"></div>
+        <span class="grow">&rarr; one new block each step, until max-model-len</span>
+      </div>
+      <div class="clabel">
+        <div><span class="sw" style="background:#1b1a3d"></span>prompt (prefill)</div>
+        <div><span class="sw" style="background:#6c5ce7"></span>generated (decode)</div>
+      </div>
+    </div>
+
+    <div class="foot">The KV cache trades GPU memory for not recomputing the past: store each token's keys and
+      values once, then reuse them every step. <b>Without it, every step would recompute the whole prefix.</b></div>
+  </div>
+</body>
+</html>
