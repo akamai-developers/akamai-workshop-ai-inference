@@ -16,15 +16,15 @@ The teaching arc is:
 
 1. **Own the endpoint.** Verify the vLLM server, Kubernetes namespace, and GPU-backed model.
 2. **Understand the machine.** Count memory, decode cost, KV cache, dense/MoE behavior, and the roofline.
-3. **Change the serving stack.** Quantize, test speculative decoding, find saturation, and choose an operating point.
+3. **Test serving-stack techniques.** Quantize, test speculative decoding, find saturation, and choose which changes deserve to stay.
 4. **Put an agent on top.** Deploy a namespaced agent and watch its traffic land in the same metrics.
 
-The important performance lesson is not "every flag makes it faster." The important lesson is controlled measurement. FP8 quantization showed a clear win in rehearsal. Draft-model speculative decoding did not win in this one-GPU setup, so Module 6 teaches how to recognize and explain a negative result, while linking to successful implementations where the drafter or method is a better fit.
+The important performance lesson is not "every technique makes this workload faster." The important lesson is controlled measurement. FP8 quantization showed a clear win in rehearsal. Draft-model speculative decoding did not win in this one-GPU setup, so Module 6 teaches how to recognize and explain a negative result, while linking to successful implementations where the drafter or method is a better fit. Module 8 closes the block by turning those measurements into a keep-or-reject operating decision.
 
 ## Presenter Flow
 
 - **Du'An, Modules 0-4:** foundations, operating context, memory/KV/cache/roofline intuition, and handoff to optimization.
-- **Omer, Modules 5-8:** performance block: quantization, speculative decoding tradeoffs, saturation, and tuning/operating-point selection.
+- **Omer, Modules 5-8:** performance block: candidate optimization techniques, speculative decoding tradeoffs, saturation, and measured operating-point selection.
 - **Du'An, Module 9:** capstone: deploy an agent on the inference layer Omer just measured and tuned.
 
 ---
@@ -67,7 +67,7 @@ The important performance lesson is not "every flag makes it faster." The import
 - **Build:** compare dense and Mixture-of-Experts behavior through the roofline lens.
 - **Derive:** why decode is memory-bound and why MoE can generate faster than its total parameter count suggests.
 - **Measure:** connect active parameters, bytes moved per token, and decode throughput.
-- **Outcome:** attendees see the first "read fewer bytes" optimization and hand off to Omer for the rest of the performance block.
+- **Outcome:** attendees see the first "read fewer bytes" performance technique and hand off to Omer for the measurement-driven optimization block.
 - **Folder:** `04_dense_vs_moe/`
 
 > **Hand off to Omer.**
@@ -77,7 +77,7 @@ The important performance lesson is not "every flag makes it faster." The import
 - **Build:** measure the BF16 baseline, edit `manifests/vllm.yaml`, deploy `RedHatAI/Qwen3-4B-FP8-dynamic`, and confirm `/v1/models`.
 - **Derive:** number formats, bytes moved per decode token, and why FP8 can preserve useful range while shrinking weight reads.
 - **Measure:** compare BF16 versus FP8 throughput and TTFT with the same workload shape.
-- **Outcome:** FP8 becomes the measured baseline for the rest of the performance block.
+- **Outcome:** attendees decide, from measurement, that FP8 is the right baseline for the rest of this workshop's performance block.
 - **Folder:** `05_quantization/`
 
 ### Module 6 — Speculative Decoding
@@ -98,10 +98,10 @@ The important performance lesson is not "every flag makes it faster." The import
 
 ### Module 8 — Tune and Evaluate
 
-- **Build:** change one vLLM serving-policy flag in the shared manifest and redeploy.
+- **Build:** try one vLLM serving-policy flag in the shared manifest and redeploy.
 - **Derive:** how `gpu-memory-utilization`, `max-model-len`, `max-num-seqs`, and `max-num-batched-tokens` move cache headroom and scheduler behavior.
 - **Measure:** rerun the same sweep and keep or reject the change based on throughput and latency.
-- **Outcome:** attendees learn the operating discipline: tuning is a measured keep-or-reject loop, not a guaranteed bigger number.
+- **Outcome:** attendees learn the operating discipline: Module 8 may keep the baseline, because tuning is a measured keep-or-reject loop, not a guaranteed bigger number.
 - **Folder:** `08_tune_and_evaluate/`
 
 > **Hand back to Du'An.**
@@ -121,7 +121,7 @@ The important performance lesson is not "every flag makes it faster." The import
 The full set is longer than 120 minutes if every cell and optional experiment is run live. Suggested live path:
 
 1. Du'An: Modules 0-1 quickly, then Modules 2-4 selectively for the mental model.
-2. Omer: Modules 5-8 as the performance block, emphasizing FP8's measured win and speculative decoding's measured tradeoff.
+2. Omer: Modules 5-8 as the performance decision block, emphasizing that FP8 wins here, speculative decoding may not, and every serving change needs evidence before it stays.
 3. Du'An: Module 9 as the capstone if time allows, or as take-home material.
 
 ## Platform Assumptions

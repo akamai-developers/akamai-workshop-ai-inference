@@ -50,7 +50,7 @@ What you need in either path: a running vLLM OpenAI-compatible endpoint, a small
 
 1. Open `00_prerequisites/00_connect_and_verify.ipynb` and run it top to bottom. It confirms your endpoint, namespace, GPU-backed vLLM pod, and a working chat completion.
 2. Work the numbered folders in order. Each module names the modules that come before it.
-3. Modules 5 through 8 are Omer's performance block. They are intentionally measurement-driven: FP8 should improve throughput, while speculative decoding may or may not be worth keeping in this one-GPU setup.
+3. Modules 5 through 8 are Omer's performance block. Treat them as an optimization decision lab: each technique is a candidate, the measurements decide whether it applies, and a rejected change is a valid result.
 4. Module 9 is Du'An's capstone: put an agent on top of the inference layer you measured.
 
 If you are running Path B, install the Python dependencies first:
@@ -82,10 +82,10 @@ The vLLM Prometheus metrics URL is derived from `VLLM_HOST` automatically: the s
 | 2 Units and memory budget | Du'An | Count parameters, precision, tokens, VRAM, bandwidth, and KV cache | 6 min |
 | 3 Prefill, decode, KV cache | Du'An | Build attention/KV-cache intuition and watch live cache metrics | 20 min |
 | 4 Dense vs MoE | Du'An | Use the roofline to explain dense vs MoE decode behavior | 15 min |
-| 5 Quantization | Omer | Measure BF16, switch the shared vLLM manifest to FP8, compare throughput | 25 min |
-| 6 Speculative decoding | Omer | Add a 0.6B drafter, measure acceptance/throughput, and decide if it helps | 30 min |
+| 5 Quantization | Omer | Measure BF16, switch the shared vLLM manifest to FP8, compare throughput and quality risk | 25 min |
+| 6 Speculative decoding | Omer | Add a 0.6B drafter, measure acceptance/throughput, and decide whether it applies here | 30 min |
 | 7 Engine saturation | Omer | Drive concurrency until batching, queueing, and the saturation knee appear | 20 min |
-| 8 Tune and evaluate | Omer | Change one vLLM knob, benchmark, and keep or reject the new operating point | 30 min |
+| 8 Tune and evaluate | Omer | Try one vLLM knob, benchmark, and keep or reject the new operating point | 30 min |
 | 9 Agent on Kubernetes | Du'An | Deploy an agent on the inference you own and watch its traffic in metrics | 12 min |
 
 The full set runs longer than a single 120-minute session, so the live workshop runs the spine and treats deeper experiments as take-home work.
@@ -100,7 +100,7 @@ The full set runs longer than a single 120-minute session, so the live workshop 
 - **`05_quantization/`** Establish a BF16 baseline, switch the shared vLLM manifest to FP8, and compare throughput.
 - **`06_speculative_decoding/`** Add draft-and-verify decoding with the 0.6B Qwen drafter and measure whether it helps or hurts.
 - **`07_inference_engine_saturation/`** Connect engine internals, batching, queueing, and saturation metrics.
-- **`08_tune_and_evaluate/`** Tune vLLM, benchmark the result, and choose a defensible operating point.
+- **`08_tune_and_evaluate/`** Try one vLLM serving-policy change, benchmark the result, and choose a defensible operating point.
 - **`09_optional_agents_on_k8s/`** Put an agent on the inference you measured, as a plain Deployment in your namespace.
 
 ## Repo Layout
