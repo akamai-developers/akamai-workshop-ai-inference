@@ -19,12 +19,12 @@ The teaching arc is:
 3. **Test serving-stack techniques.** Quantize, test speculative decoding, find saturation, and choose which changes deserve to stay.
 4. **Put an agent on top.** Deploy a namespaced agent and watch its traffic land in the same metrics.
 
-The important performance lesson is not "every technique makes this workload faster." The important lesson is controlled measurement. FP8 quantization showed a clear win in rehearsal. Draft-model speculative decoding did not win in this one-GPU setup, so Module 6 teaches how to recognize and explain a negative result, while linking to successful implementations where the drafter or method is a better fit. Module 8 closes the block by turning those measurements into a keep-or-reject operating decision.
+The performance lesson is controlled measurement. FP8 quantization showed a clear win in rehearsal. Draft-model speculative decoding did not win in this one-GPU setup, so Module 6 teaches how to read the data and explain why a technique may or may not apply, while linking to successful implementations where the drafter or method is a better fit. Module 8 closes the block by turning those measurements into a keep-or-reject operating decision.
 
 ## Presenter Flow
 
 - **Du'An, Modules 0-4:** foundations, operating context, memory/KV/cache/roofline intuition, and handoff to optimization.
-- **Omer, Modules 5-8:** performance block: candidate optimization techniques, speculative decoding tradeoffs, saturation, and measured operating-point selection.
+- **Omer, Modules 5-8:** performance block: optimization hypotheses, speculative decoding tradeoffs, saturation, and measured operating-point selection.
 - **Du'An, Module 9:** capstone: deploy an agent on the inference layer Omer just measured and tuned.
 
 ---
@@ -101,7 +101,7 @@ The important performance lesson is not "every technique makes this workload fas
 - **Build:** try one vLLM serving-policy flag in the shared manifest and redeploy.
 - **Derive:** how `gpu-memory-utilization`, `max-model-len`, `max-num-seqs`, and `max-num-batched-tokens` move cache headroom and scheduler behavior.
 - **Measure:** rerun the same sweep and keep or reject the change based on throughput and latency.
-- **Outcome:** attendees learn the operating discipline: Module 8 may keep the baseline, because tuning is a measured keep-or-reject loop, not a guaranteed bigger number.
+- **Outcome:** attendees learn the operating discipline: tuning is a hypothesis, measurement, and keep-or-reject loop.
 - **Folder:** `08_tune_and_evaluate/`
 
 > **Hand back to Du'An.**
