@@ -50,7 +50,7 @@ What you need in either path: a running vLLM OpenAI-compatible endpoint, a small
 
 1. Open `00_prerequisites/00_connect_and_verify.ipynb` and run it top to bottom. It confirms your endpoint, namespace, GPU-backed vLLM pod, and a working chat completion.
 2. Work the numbered folders in order. Each module names the modules that come before it.
-3. Modules 5 through 8 are Omer's performance block. Treat them as an optimization decision lab: each technique is a candidate, the measurements decide whether it applies, and a rejected change is a valid result.
+3. Modules 5 through 8 are Omer's performance block. Treat each technique as a hypothesis: make the change, run the same measurement, compare the result, and decide what configuration to keep.
 4. Module 9 is Du'An's capstone: put an agent on top of the inference layer you measured.
 
 If you are running Path B, install the Python dependencies first:
