@@ -32,6 +32,12 @@ By the end you can:
 7. Tune vLLM serving-policy knobs and keep or reject the change based on throughput and latency.
 8. Deploy an agent on the inference endpoint you own and watch its traffic in the same metrics.
 
+## Prerequisites
+
+**Account:**
+
+- Create an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with an API token (includes free credit).
+
 ## Prerequisite Paths
 
 The notebooks never provision infrastructure. They assume a vLLM endpoint already exists and read connection details from environment variables, so the same notebook runs in either path.
