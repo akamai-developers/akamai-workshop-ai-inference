@@ -102,7 +102,7 @@ spec:
             - "--model=Qwen/Qwen3-4B"
             - "--download-dir=/models"
             - "--tensor-parallel-size=1"
-            - "--gpu-memory-utilization=0.6"
+            - "--gpu-memory-utilization=0.7"
             - "--max-model-len=8192"
             - "--max-num-seqs=32"
             - "--host=0.0.0.0"
