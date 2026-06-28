@@ -20,8 +20,8 @@ def build_agent_prompt(n_tools: int = 20) -> tuple:
     """A realistic agent system prompt: a ReAct instruction plus n fake tool schemas.
 
     Each schema is roughly 40 to 60 tokens, so n_tools sets the prefix size. Returns the prompt and
-    a rough token estimate (4 chars per token). Keep the estimate under about 1800 so a turn plus a
-    short answer still fits the 2048 cap.
+    a rough token estimate (4 chars per token). Keep the estimate comfortably under the 8192-token
+    cap so a turn plus a short answer still fits.
     """
     tools = "\n".join(
         f"- tool_{i}(query: str, top_k: int = 5, filters: dict = {{}}) -> json"

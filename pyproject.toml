@@ -18,11 +18,6 @@ dependencies = [
     "nbformat>=5.10",
 ]
 
-[project.optional-dependencies]
-# The quantization lab (section 06) only. Heavy install, isolated here.
-quantize = ["llmcompressor>=0.3"]
-
 [tool.uv]
-# uv users: `uv sync` installs the core set, `uv sync --extra quantize` adds the
-# quantization dependencies for section 06.
+# uv users: `uv sync` installs the core notebook dependency set.
 package = false

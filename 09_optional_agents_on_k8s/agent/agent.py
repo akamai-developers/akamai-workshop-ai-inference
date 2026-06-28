@@ -34,18 +34,18 @@ client = OpenAI(
     base_url=os.environ.get("VLLM_BASE_URL", "http://vllm:8000/v1"),
     api_key=os.environ.get("VLLM_API_KEY", "not-needed"),
 )
-MODEL = os.environ.get("MODEL_NAME", "Qwen/Qwen3-4B")
+MODEL = os.environ.get("MODEL_NAME", "RedHatAI/Qwen3-4B-FP8-dynamic")
 
-# Unlike the measurement labs, the agent leaves Qwen3 thinking ON so it can reason
-# before it picks a tool. The server's --reasoning-parser splits that <think> block
-# into reasoning_content, so the answer we return below stays clean. We still drop an
-# empty tools=[], which vLLM 0.20+ rejects, so adding a tool later is a one-line change.
+# Keep Qwen3 thinking OFF for this chat-only capstone. With thinking enabled, short
+# answers can come back as reasoning_content with no final content, which is awkward
+# for a tiny HTTP wrapper. We still drop an empty tools=[], which vLLM 0.20+ rejects,
+# so adding a tool later is a one-line change.
 _create = client.chat.completions.create
 
 
 def _vllm_create(*args, **kwargs):
     if "qwen3" in MODEL.lower():
-        kwargs.setdefault("extra_body", {}).setdefault("chat_template_kwargs", {}).setdefault("enable_thinking", True)
+        kwargs.setdefault("extra_body", {}).setdefault("chat_template_kwargs", {}).setdefault("enable_thinking", False)
     if "tools" in kwargs and not kwargs["tools"]:
         kwargs.pop("tools")
         kwargs.pop("tool_choice", None)
@@ -56,16 +56,27 @@ client.chat.completions.create = _vllm_create
 
 
 def answer(message):
+    runtime_context = (
+        f"You are currently calling model {MODEL} at {client.base_url}. "
+        "If asked what powers you, name that model and endpoint. "
+        "Do not invent exact plan names, region names, or CLI flags; when exact "
+        "operational syntax matters, say to verify it against the current Akamai "
+        "Cloud or Linode CLI documentation."
+    )
     resp = client.chat.completions.create(
         model=MODEL,
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": runtime_context},
             {"role": "user", "content": message},
         ],
         max_tokens=300,
         temperature=0.2,
     )
-    return resp.choices[0].message.content.strip()
+    content = resp.choices[0].message.content
+    if not content:
+        raise RuntimeError("model returned no final answer content")
+    return content.strip()
 
 
 class Handler(BaseHTTPRequestHandler):
