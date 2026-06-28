@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Module 4 disaggregation</title>
+<style>
+  :root { --navy:#1b1a3d; --purple:#6c5ce7; --grey:#eef0f4; --grey-b:#e2e3ea;
+          --ink:#1b1a3d; --muted:#5c5c74; --line:#9a9ab0; --red:#d9534f; --green:#2fa56a; }
+  * { box-sizing:border-box; margin:0; padding:0;
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+  body { background:#fff; }
+  #diagram { width:1000px; padding:34px 40px 30px; background:#fff; color:var(--ink); }
+  .kicker { font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;
+            color:var(--muted); margin-bottom:18px; }
+  .banner { background:var(--grey); border:1px solid var(--grey-b); border-radius:12px;
+            padding:13px 16px; font-size:13.5px; line-height:1.5; margin-bottom:24px; }
+  .banner b { font-weight:700; }
+  .flow { display:flex; align-items:center; justify-content:center; gap:8px; }
+  .gpu { flex:0 0 300px; border:1.6px solid var(--navy); border-radius:14px; padding:18px; text-align:center; }
+  .gpu.compute { border-color:var(--green); background:rgba(47,165,106,.06); }
+  .gpu.memory  { border-color:var(--red);   background:rgba(217,83,79,.06); }
+  .gpu .name { font-size:15px; font-weight:700; color:var(--navy); }
+  .gpu .role { font-size:12px; margin-top:4px; font-weight:600; }
+  .gpu.compute .role { color:var(--green); } .gpu.memory .role { color:var(--red); }
+  .gpu .do { font-size:11.5px; color:var(--muted); margin-top:10px; line-height:1.45; }
+  .link { flex:0 0 auto; text-align:center; }
+  .link .gly { font-size:24px; color:var(--purple); }
+  .link .lab { font-size:11px; font-weight:700; color:var(--purple); white-space:nowrap; }
+  .link .sub { font-size:10.5px; color:var(--muted); }
+  .foot { font-size:12px; color:var(--muted); margin-top:22px; line-height:1.5; }
+  .foot b { color:var(--ink); }
+</style>
+</head>
+<body>
+  <div id="diagram">
+    <div class="kicker">Module 4 &nbsp;&middot;&nbsp; Look forward: split prefill from decode</div>
+    <div class="banner">Prefill is compute-bound, decode is memory-bound. On one GPU a big prefill
+      stalls everyone's decode. So <b>stop sharing</b>: give each phase its own GPUs and ship the KV
+      cache between them.</div>
+
+    <div class="flow">
+      <div class="gpu compute">
+        <div class="name">Prefill GPU pool</div>
+        <div class="role">compute-bound</div>
+        <div class="do">Reads the prompt and the tool schemas, builds the KV cache. Scale for throughput.</div>
+      </div>
+      <div class="link">
+        <div class="lab">KV cache</div>
+        <div class="gly">&rarr;</div>
+        <div class="sub">NIXL / RDMA</div>
+      </div>
+      <div class="gpu memory">
+        <div class="name">Decode GPU pool</div>
+        <div class="role">memory-bound</div>
+        <div class="do">Streams the tokens one at a time. Scale for bandwidth, even on cheaper cards.</div>
+      </div>
+    </div>
+
+    <div class="foot">Not runnable on one 20 GB card. The honest win: a single prefill-plus-decode pair
+      does not raise throughput by itself. The gains come <b>at fleet scale</b> with smart routing,
+      where you size and scale the two phases on their own and a prefill spike never interrupts a decode.
+      vLLM <code>--kv-transfer-config</code>, NVIDIA Dynamo, llm-d.</div>
+  </div>
+</body>
+</html>
