@@ -6,9 +6,8 @@
 #   pip install -r requirements.txt
 #
 # Keep this list LIGHT: it is installed into the CPU-only notebook pod, which is
-# small. The heavy, GPU-only quantization stack (torch + transformers + llmcompressor)
-# is NOT here on purpose. Section 06 installs it on demand, and it only runs where a
-# GPU is attached. See pyproject.toml's `quantize` extra.
+# small. Tooling for producing quantized model artifacts belongs in optional
+# follow-up material, not the main workshop environment.
 
 # LLM client: the OpenAI SDK pointed at your vLLM OpenAI-compatible endpoint.
 openai>=1.40
@@ -24,8 +23,6 @@ jupyterlab>=4.0
 nbformat>=5.10
 
 # Installed on demand, NOT here:
-#   llmcompressor + torch + transformers  section 06 only; GPU required. Pulled by
-#                  that notebook's own `%pip install`, or `uv sync --extra quantize`.
 #   vllm           the inference server and the `vllm bench serve` load tool. Ships in
 #                  the GPU image the platform provides; the notebooks fall back to a
 #                  pure-Python load generator (common/load.py) when it is absent.

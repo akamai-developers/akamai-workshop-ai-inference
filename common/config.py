@@ -56,8 +56,8 @@ def _resolve_namespace() -> str:
     kubeconfig's current context (the hosted platform scopes that context to your
     own namespace, e.g. ``workshop-s01``); else ``default``. The hosted workspace
     pod mounts no service-account token, so we ask kubectl rather than reading
-    ``/var/run/secrets``. This keeps ``kubectl -n {namespace}`` in the optimize /
-    two-models / agent labs pointed at the right namespace even when NAMESPACE is
+    ``/var/run/secrets``. This keeps ``kubectl -n {namespace}`` in the tuning and
+    agent labs pointed at the right namespace even when NAMESPACE is
     not injected as an env var.
     """
     ns = os.environ.get("NAMESPACE")

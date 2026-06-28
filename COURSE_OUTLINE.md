@@ -2,141 +2,144 @@
 
 **Workshop:** Agents That Own Their Inference: Building Production AI Agents on Dedicated GPUs
 **Venue:** AI Engineer World's Fair, 120-minute hands-on workshop
-**Presenters:** Du'An Lightfoot (foundations + operational close), Khaja Omer (optimization)
+**Presenters:** Du'An Lightfoot (Modules 0-4 and 9), Khaja Omer (Modules 5-8)
 **Format:** Jupyter notebooks, one dedicated GPU per attendee, run against a vLLM you operate
-**Status:** Module 3 is built and verified end to end. It is the template every other module is held to.
+**Status:** Modules 0-9 are implemented. The rehearsal cluster has run every notebook end to end.
 
 ---
 
-## The bar
+## The Story
 
-Every module follows the same arc, and nothing ships that does not clear it:
+The workshop starts with a working inference endpoint, builds the mental model for why serving is expensive, then walks through the performance levers and closes by deploying an agent on the inference layer the attendee operated.
 
-1. **Implement the mechanism** in numpy, small enough to read, real enough to run.
-2. **Derive the numbers** from first principles: FLOPs, bytes, the ridge point, the acceptance rate.
-3. **Measure it** on the GPU you own, confirming the theory and recovering hardware properties from observed behavior.
+The teaching arc is:
 
-No "change a flag and watch a metric." A senior engineer should leave each module knowing something they could not get from a blog post.
+1. **Own the endpoint.** Verify the vLLM server, Kubernetes namespace, and GPU-backed model.
+2. **Understand the machine.** Count memory, decode cost, KV cache, dense/MoE behavior, and the roofline.
+3. **Test serving-stack techniques.** Quantize, test speculative decoding, find saturation, and choose which changes deserve to stay.
+4. **Put an agent on top.** Deploy a namespaced agent and watch its traffic land in the same metrics.
 
-## Structure
+The performance lesson is controlled measurement. FP8 quantization showed a clear win in rehearsal. Draft-model speculative decoding did not win in this one-GPU setup, so Module 6 teaches how to read the data and explain why a technique may or may not apply, while linking to successful implementations where the drafter or method is a better fit. Module 8 closes the block by turning those measurements into a keep-or-reject operating decision.
 
-Three parts, two presenters. Du'An builds the machine and closes on the payoff; Khaja teaches the techniques that make it fast.
+## Presenter Flow
 
----
-
-## Part 1 — The machine  ·  Du'An
-
-Understand the inference stack from the transformer up.
-
-### 1. The Inference Stack & Runtime Landscape
-- **Frame:** the landscape of model runtimes (vLLM, SGLang, TensorRT-LLM, llama.cpp) and why this workshop runs vLLM; then vLLM's features and the value each brings (continuous batching, KV-cache management, kernel support).
-- **Build:** trace one request end to end, client to server to engine to scheduler to KV cache to streamed tokens.
-- **Derive:** the request lifecycle, where time goes (TTFT is prefill, TPOT is decode).
-- **Measure:** connect to your vLLM, send a request, read the metrics that prove the lifecycle.
-- *Source:* adapt `00_prerequisites` + `01_renting_vs_owning`. *Status:* adapt + add the landscape and the trace.
-- *Sync:* Khaja proposed the runtime-landscape framing; Du'An agreed.
-
-### 2. Transformer Deep Dive  —  CUT
-Dropped per the sync. Du'An: "we dont need to cover this." This is an inference setup-and-use workshop, not model internals. The one piece that matters for inference (attention's role in prefill versus decode) is already in Module 3.
-
-### 3. Prefill, Decode & the KV Cache  **[DONE, VERIFIED]**
-- **Build:** attention by hand; naive generation at `O(n^2)`; the KV cache at `O(n)`, plotted side by side.
-- **Derive:** `2 * layers * kv_heads * head_dim * bytes` per token; the GQA 4x; the budget-to-concurrency ceiling.
-- **Measure:** the live KV gauge filling under load; recover your card's bandwidth from the decode rate (~320 GB/s); batching lifts decode 35 → ~1,800 tok/s.
-- *Source:* rebuilds `02_inference_and_memory`. *Status:* `02_prefill_decode_kv_cache.ipynb`, verified against live `s01`. **This is the standard.**
-
-### 4. Dense vs MoE on the GPU
-- **Build:** run a dense model and a Mixture-of-Experts model (the catalog has `Qwen3-30B-A3B`) and compare their decode behavior on the same card.
-- **Derive:** why MoE generates faster, it activates only a few experts per token, so it moves far fewer weight bytes than its total size (total versus active parameters); the roofline / arithmetic-intensity lens that explains the gap and why so many new models are MoE.
-- **Measure:** decode tokens/s and the effective bytes moved per token, dense versus MoE, on your GPU.
-- *Source:* roofline cell seeded in `04_saturate_your_gpu`. *Status:* reshape (MoE focus).
-- *Sync:* Khaja proposed dense-vs-MoE over a GPU-architecture deep-dive (too dense for this audience); Du'An: MoE is important, it explains how models fit on GPUs and why they are faster. The roofline stays as the lens, not the headline.
-
-> **Hand off to Khaja.**
+- **Du'An, Modules 0-4:** foundations, operating context, memory/KV/cache/roofline intuition, and handoff to optimization.
+- **Omer, Modules 5-8:** performance block: optimization hypotheses, speculative decoding tradeoffs, saturation, and measured operating-point selection.
+- **Du'An, Module 9:** capstone: deploy an agent on the inference layer Omer just measured and tuned.
 
 ---
 
-## Part 2 — Make it fast  ·  Khaja
+## Module Outline
 
-The optimization techniques that move the numbers.
+### Module 0 — Connect and Verify Your Environment
 
-### 5. Quantization
-- **Build:** start on a non-quantized model, then switch to a quantized one and feel the difference; quantize a weight tensor by hand; then quantize the KV cache (for example fp8 / turbo KV) to serve more users per GPU.
-- **Derive:** number formats (sign/exp/mantissa) and why FP8 keeps outlier range INT8 clips; bytes saved; the accuracy cost (Pi truncated to 3 is 4.5%, cubed 12.9%); freed memory to concurrent sequences.
-- **Measure:** the non-quant vs quant performance gap; footprint drop; KV headroom and extra concurrent users from KV-cache quantization; accuracy on a small eval.
-- *Source:* base in `06_quantization_with_llm_compressor`. *Status:* deepen.
-- *Sync:* Khaja, start non-quant then quant to show the difference, add KV-cache quantization (turbo quant) for more users per GPU.
+- **Build:** resolve environment settings, list namespace pods, inspect the vLLM pod, and send a first OpenAI-compatible request.
+- **Measure:** confirm `/v1/models` and a real chat completion from the vLLM endpoint.
+- **Outcome:** attendees know their endpoint, namespace, kubeconfig, and GPU-backed vLLM pod are working.
+- **Folder:** `00_prerequisites/`
 
-### 6. Attention Mechanisms (FlashAttention, and how to choose)
-- **Frame:** a high-level overview of attention mechanisms (MHA, GQA, MQA, FlashAttention) and how to choose among them. The deep IO-complexity math is summarized, not derived; the audience does not need to implement a kernel.
-- **Show:** why FlashAttention wins (it never materializes the `s x s` matrix, it is bound by HBM reads not FLOPs) and what the engine does for you.
-- **Measure:** the attention-memory difference, naive versus tiled, as a demonstration.
-- *Source:* none. *Status:* build fresh (overview altitude).
-- *Sync:* Khaja, this is math-heavy; a high-level overview plus how-to-choose is the right altitude, not a kernel derivation.
+### Module 1 — The Inference Stack and Runtime Landscape
 
-### 7. Speculative Decoding
-- **Build:** draft-and-verify with a small draft model or MTP; the acceptance check, so you see which proposed tokens are kept.
-- **Derive:** acceptance rate, expected accepted tokens per verify step, the speedup formula, when it pays.
-- **Measure:** acceptance rate and end-to-end speedup on real prompts; the latency-throughput tradeoff.
-- *Reference:* Khaja's example `akamai-developers/speculative-decoding-example-vllm-blackwell`. Note: it targets a Blackwell GPU; the workshop card is an RTX 4000 Ada on vLLM v0.20.2, so confirm it runs on the workshop hardware.
-- *Source:* none. *Status:* build fresh. **Needs platform work (see Platform support).**
+- **Build:** point a small agent-style wrapper at the vLLM endpoint and trace one request end to end.
+- **Derive:** where time goes: prefill, decode, TTFT, TPOT, and the runtime/scheduler/KV-cache layers.
+- **Measure:** compare owning against renting with token counts, cost, data path, rate limits, and control.
+- **Outcome:** attendees understand why owning the inference server matters and why this workshop uses vLLM.
+- **Folder:** `01_inference_stack/`
 
-### 8. Continuous Batching & Saturation
-- **Build:** drive rising concurrency and watch continuous batching pack requests into one forward pass.
-- **Derive:** Little's Law and the saturation knee, tied to the roofline from Module 4.
-- **Measure:** the batch forming, then the queue, KV pressure, and preemption past the knee.
-- *Source:* base in `03_serving_with_vllm` + `04_saturate_your_gpu`. *Status:* reuse.
+### Module 2 — Units and the Memory Budget
+
+- **Build:** compute model weight size from parameters and precision.
+- **Derive:** bytes per number, tokens as the serving unit, VRAM/bandwidth, and the weights/KV/overhead memory split.
+- **Measure:** compare FP16/BF16, FP8, and INT4 budgets to see how smaller weights leave more KV cache.
+- **Outcome:** attendees can size a model against a GPU card before touching Kubernetes.
+- **Folder:** `02_units_and_memory_budget/`
+
+### Module 3 — Prefill, Decode, and the KV Cache
+
+- **Build:** attention by hand, naive generation, and cached generation.
+- **Derive:** why naive decode grows quadratically and KV-cache decode is linear; compute per-token KV cache cost.
+- **Measure:** watch the live vLLM cache gauge move and connect prefill/decode to arithmetic intensity.
+- **Outcome:** attendees understand the trade: spend GPU memory to avoid recomputing prior context.
+- **Folder:** `03_prefill_decode_kv_cache/`
+
+### Module 4 — Dense vs MoE on the GPU
+
+- **Build:** compare dense and Mixture-of-Experts behavior through the roofline lens.
+- **Derive:** why decode is memory-bound and why MoE can generate faster than its total parameter count suggests.
+- **Measure:** connect active parameters, bytes moved per token, and decode throughput.
+- **Outcome:** attendees see the first "read fewer bytes" performance technique and hand off to Omer for the measurement-driven optimization block.
+- **Folder:** `04_dense_vs_moe/`
+
+> **Hand off to Omer.**
+
+### Module 5 — Quantization
+
+- **Build:** measure the BF16 baseline, edit `manifests/vllm.yaml`, deploy `RedHatAI/Qwen3-4B-FP8-dynamic`, and confirm `/v1/models`.
+- **Derive:** number formats, bytes moved per decode token, and why FP8 can preserve useful range while shrinking weight reads.
+- **Measure:** compare BF16 versus FP8 throughput and TTFT with the same workload shape.
+- **Outcome:** attendees decide, from measurement, that FP8 is the right baseline for the rest of this workshop's performance block.
+- **Folder:** `05_quantization/`
+
+### Module 6 — Speculative Decoding
+
+- **Build:** add `--speculative-config` with `RedHatAI/Qwen3-0.6B-FP8-dynamic` as the draft model.
+- **Derive:** accepted tokens per target step, speculation depth, acceptance rate, and draft overhead.
+- **Measure:** compare the FP8 baseline against speculative decoding with the same workload shape and validate that the live deployment contains the speculative config.
+- **Outcome:** attendees learn that speculative decoding can help substantially when the drafter/method fits, but can hurt when acceptance is low, depth is too high, scheduler tradeoffs dominate, or the drafter contends with the target on one GPU.
+- **Folder:** `06_speculative_decoding/`
+
+### Module 7 — Engine Mechanics and Saturation
+
+- **Build:** drive rising concurrency against the measured deployment.
+- **Derive:** continuous batching, PagedAttention, queueing, KV pressure, and the saturation knee.
+- **Measure:** find the first point where throughput flattens while TTFT, waiting, or cache pressure rises.
+- **Outcome:** attendees know the capacity boundary before they try to tune anything.
+- **Folder:** `07_inference_engine_saturation/`
+
+### Module 8 — Tune and Evaluate
+
+- **Build:** try one vLLM serving-policy flag in the shared manifest and redeploy.
+- **Derive:** how `gpu-memory-utilization`, `max-model-len`, `max-num-seqs`, and `max-num-batched-tokens` move cache headroom and scheduler behavior.
+- **Measure:** rerun the same sweep and keep or reject the change based on throughput and latency.
+- **Outcome:** attendees learn the operating discipline: tuning is a hypothesis, measurement, and keep-or-reject loop.
+- **Folder:** `08_tune_and_evaluate/`
 
 > **Hand back to Du'An.**
 
----
+### Module 9 — Deploy Your Agent on the Inference You Own
 
-## Part 3 — Operate it  ·  Du'An
-
-Run it under real load on the GPU you own.
-
-### 9. Tune the Engine
-- **Build:** edit the engine flags in the vLLM manifest and redeploy through Kubernetes.
-- **Derive:** the `gpu-memory-utilization` byte budget and the batch-cap arithmetic, predicting the gain before measuring.
-- **Measure:** the before-and-after sweep, throughput up while latency holds, proven against the metrics.
-- *Source:* base in `05_optimize_the_server` + `08_benchmark_and_evaluate`. *Status:* reuse + deepen.
-
-### 10. The Agent on Inference You Own
-- **Build:** deploy a small agent into your namespace, pointed at the vLLM you tuned.
-- **Derive:** an agent as a plain client of a private endpoint; where scale-to-zero fits.
-- **Measure:** the agent's traffic landing in the same metrics you tuned, closing the loop.
-- *Source:* base in `09_optional_agents_on_k8s`. *Status:* reuse. The capstone.
+- **Build:** deploy a small Akamai Cloud solutions architect agent as a namespaced Kubernetes Deployment and Service.
+- **Derive:** an agent is a client of a model endpoint; the important question is where that endpoint lives and who operates it.
+- **Measure:** send concurrent agent questions and watch the traffic show up in vLLM metrics.
+- **Outcome:** attendees close the loop: the agent runs on inference they own, measured, and operated.
+- **Folder:** `09_optional_agents_on_k8s/`
 
 ---
 
-## Mapping from the current repo
+## Live 120-Minute Cut
 
-| Existing folder | Becomes | What happens |
-|---|---|---|
-| `00_prerequisites` | Module 1 | adapt (on-ramp + request trace) |
-| `01_renting_vs_owning` | cold open / framing | becomes the intro, not a numbered module |
-| `02_inference_and_memory` | Module 3 | rebuilt deep (done) |
-| `03_serving_with_vllm` | Module 8 | reuse |
-| `04_saturate_your_gpu` | Module 8 (+ seeds 4) | reuse; roofline seed to Module 4 |
-| `05_optimize_the_server` | Module 9 | reuse |
-| `06_quantization_…` | Module 5 | deepen |
-| `07_two_models_one_gpu` | — | dropped (time-slicing killed) |
-| `08_benchmark_and_evaluate` | Module 9 | folds in |
-| `09_optional_agents_on_k8s` | Module 10 | reuse |
+The full set is longer than 120 minutes if every cell and optional experiment is run live. Suggested live path:
 
-Of 10 folders: 8 map forward, `01` becomes framing, `07` is dropped. Of the new modules: 1 done (M3), 1 cut (M2, Transformer), 5 reuse a base (M1, M5, M8, M9, M10), and 3 fresh builds (M4 reshaped to MoE, M6 overview, M7).
+1. Du'An: Modules 0-1 quickly, then Modules 2-4 selectively for the mental model.
+2. Omer: Modules 5-8 as the performance decision block, emphasizing that FP8 wins here, speculative decoding may not, and every serving change needs evidence before it stays.
+3. Du'An: Module 9 as the capstone if time allows, or as take-home material.
 
-## Platform support (verified)
+## Platform Assumptions
 
-Du'An's modules (1, 3, 4, 9, 10) run on the platform as configured, on the current `Qwen/Qwen3-4B`. No platform changes. Module 4's MoE comparison wants an MoE model served (the catalog has `Qwen3-30B-A3B`), so confirm that plan fits one student GPU.
+The rehearsal deployment used:
 
-Khaja's half has the only real platform work:
-- **Speculative Decoding (the gap).** `Qwen3.5-4B` is not in the `sizing.py` catalog, and there is no spec-decode wiring anywhere (no `--speculative-config`, MTP, draft-model, or EAGLE flags). vLLM is pinned at `v0.20.2`. Path: add `Qwen3.5-4B` to `sizing.py` with the MTP spec-decode args in its `vllm_args` (the dedicated vLLM template already ranges over `vllm_extra_args`), then confirm v0.20.2 runs Qwen3.5 MTP.
-- **Quantization:** serving quantized models is supported; the quantize-by-hand step needs a GPU the notebook pod lacks (same as today's `06`).
-- **FlashAttention / Continuous Batching:** no platform work; supported by vLLM today.
+- one workspace/student
+- dedicated per-student vLLM
+- scoped kubeconfig
+- one CPU node and one single-GPU node
+- `Qwen/Qwen3-4B` as the initial model
+- `RedHatAI/Qwen3-4B-FP8-dynamic` as the FP8 target
+- `RedHatAI/Qwen3-0.6B-FP8-dynamic` as the speculative drafter
+- shared `manifests/vllm.yaml` edited by Modules 5-8
 
-## Open decisions for the 4pm sync
+Important platform/content notes:
 
-1. **The live 120-minute cut.** Even split, it is more than 120 minutes hands-on. Suggested live path: Du'An opens with Module 1 (brief) → 3 → 4; Khaja teaches a subset of 5–8; Du'An closes with Module 10. The rest is take-home depth.
-2. **Confirm Modules 9 and 10 are Du'An's** (Khaja's set is 5–8).
-3. **numpy vs a GPU framework** for the mechanism modules, and the final teaching order.
+- The shared manifest must start from `Qwen/Qwen3-4B` with no speculative config so manual walkthroughs begin cleanly.
+- Module 5 switches the served model to FP8.
+- Module 6 adds the drafter only through `--speculative-config`; the 0.6B model is never a served target model.
+- Module 9 creates `sa-agent` with its own selector so it does not collide with any platform-created `agent` deployment.
