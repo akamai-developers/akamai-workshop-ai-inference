@@ -1,13 +1,19 @@
-"""A small Akamai Cloud Solutions Architect agent.
+"""The Akamai Cloud Solutions Architect agent (minimal capstone build).
 
-It is just a client of your vLLM. It wraps every request with a solutions-architect
-system prompt and serves answers over HTTP. The whole point of Module 9 is that the
-model answering is the vLLM you tuned, on the GPU you own, not a rented API.
+It is just a client of your vLLM. It wraps every request with the same solutions-architect
+system prompt you met in Module 1, gives the model one read-only tool, and serves answers
+over HTTP. The whole point of Module 9 is that the model answering is the vLLM you tuned,
+on the GPU you own, not a rented API.
 
-Deliberately tiny: the only dependency is the openai client, installed at container
-start, so this deploys with a stock python image and no framework. The persona is the
-same one the full Akamai Solutions Architect Agent workshop builds, kept to chat only
-here so the capstone stays about inference, not agent plumbing.
+This is the persona from the full Akamai Solutions Architect Agent
+(https://github.com/akamai-developers/akamai-workshop-solution-architect-agent), cut down
+on purpose. The full agent adds memory and an MCP server that reaches your Akamai account;
+this capstone deliberately leaves the MCP out, so the deployed agent needs no credentials
+and cannot touch your account. The one tool here, akamai_gpu_pricing, reads a static table.
+
+Deliberately tiny: the only dependency is the openai client, installed at container start,
+so this deploys with a stock python image and no framework. Qwen3 thinking is ON so the
+model reasons before it calls the tool and again before it writes the answer.
 """
 
 import json
@@ -28,31 +34,61 @@ Out of scope: Akamai CDN, Akamai security products, and edge compute (EdgeWorker
 EdgeKV). If asked about these, say they are out of your scope and point the user to the
 right Akamai team. Do not guess.
 
+When a question needs the price of an Akamai Cloud GPU, call the akamai_gpu_pricing tool
+instead of guessing the numbers.
+
 You run on self-hosted inference served by vLLM. If asked what powers you, say so."""
+
+# One self-contained tool: look up Akamai Cloud GPU plan pricing from a small table. A
+# solutions architect fields cost questions, so the agent reasons about which card fits
+# and quotes the real per-hour and per-month price, all on the model you own. No network
+# and no extra dependency, so the agent stays tiny while making a real tool call.
+GPU_PRICING = {
+    "rtx-4000-ada": {
+        "hourly_usd": 0.52, "monthly_usd": 374.40, "gpus": 1,
+        "good_for": "single-GPU serving of small to mid-size LLMs, the workshop card",
+    },
+    "rtx-6000-quadro": {
+        "hourly_usd": 1.50, "monthly_usd": 1080.00, "gpus": 1,
+        "good_for": "more VRAM for visualization and mid-size models",
+    },
+    "rtx-pro-6000-blackwell": {
+        "hourly_usd": 2.50, "monthly_usd": 1800.00, "gpus": 1,
+        "good_for": "distributed AI inference and larger models",
+    },
+}
+
+TOOLS = [{
+    "type": "function",
+    "function": {
+        "name": "akamai_gpu_pricing",
+        "description": "Look up the per-hour and per-month price of an Akamai Cloud GPU plan, and what it is best for.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "card": {
+                    "type": "string",
+                    "description": "GPU card id, one of: rtx-4000-ada, rtx-6000-quadro, rtx-pro-6000-blackwell",
+                },
+            },
+            "required": ["card"],
+        },
+    },
+}]
+
+
+def akamai_gpu_pricing(card):
+    key = card.lower().replace(" ", "-").replace("nvidia-", "")
+    return GPU_PRICING.get(key, {"error": f"unknown card '{card}'", "known": list(GPU_PRICING)})
+
+
+TOOL_IMPLS = {"akamai_gpu_pricing": akamai_gpu_pricing}
 
 client = OpenAI(
     base_url=os.environ.get("VLLM_BASE_URL", "http://vllm:8000/v1"),
     api_key=os.environ.get("VLLM_API_KEY", "not-needed"),
 )
 MODEL = os.environ.get("MODEL_NAME", "RedHatAI/Qwen3-4B-FP8-dynamic")
-
-# Keep Qwen3 thinking OFF for this chat-only capstone. With thinking enabled, short
-# answers can come back as reasoning_content with no final content, which is awkward
-# for a tiny HTTP wrapper. We still drop an empty tools=[], which vLLM 0.20+ rejects,
-# so adding a tool later is a one-line change.
-_create = client.chat.completions.create
-
-
-def _vllm_create(*args, **kwargs):
-    if "qwen3" in MODEL.lower():
-        kwargs.setdefault("extra_body", {}).setdefault("chat_template_kwargs", {}).setdefault("enable_thinking", False)
-    if "tools" in kwargs and not kwargs["tools"]:
-        kwargs.pop("tools")
-        kwargs.pop("tool_choice", None)
-    return _create(*args, **kwargs)
-
-
-client.chat.completions.create = _vllm_create
 
 
 def answer(message):
@@ -63,20 +99,46 @@ def answer(message):
         "operational syntax matters, say to verify it against the current Akamai "
         "Cloud or Linode CLI documentation."
     )
-    resp = client.chat.completions.create(
-        model=MODEL,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "system", "content": runtime_context},
-            {"role": "user", "content": message},
-        ],
-        max_tokens=300,
-        temperature=0.2,
-    )
-    content = resp.choices[0].message.content
-    if not content:
-        raise RuntimeError("model returned no final answer content")
-    return content.strip()
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": runtime_context},
+        {"role": "user", "content": message},
+    ]
+    # The model reasons (thinking ON), optionally calls the tool, reads the result, then
+    # answers. A few rounds is plenty for one tool.
+    for _ in range(4):
+        resp = client.chat.completions.create(
+            model=MODEL,
+            messages=messages,
+            tools=TOOLS,
+            max_tokens=700,
+            temperature=0.2,
+            extra_body={"chat_template_kwargs": {"enable_thinking": True}},
+        )
+        msg = resp.choices[0].message
+        if not msg.tool_calls:
+            content = msg.content
+            if not content:
+                raise RuntimeError("model returned no final answer content")
+            return content.strip()
+        # Record the assistant's tool-call turn, run each tool, feed the results back.
+        messages.append({
+            "role": "assistant",
+            "content": msg.content or "",
+            "tool_calls": [
+                {"id": tc.id, "type": "function",
+                 "function": {"name": tc.function.name, "arguments": tc.function.arguments}}
+                for tc in msg.tool_calls
+            ],
+        })
+        for tc in msg.tool_calls:
+            args = json.loads(tc.function.arguments or "{}")
+            impl = TOOL_IMPLS.get(tc.function.name)
+            result = impl(**args) if impl else {"error": f"unknown tool {tc.function.name}"}
+            messages.append({
+                "role": "tool", "tool_call_id": tc.id, "content": json.dumps(result),
+            })
+    raise RuntimeError("tool loop did not converge")
 
 
 class Handler(BaseHTTPRequestHandler):
