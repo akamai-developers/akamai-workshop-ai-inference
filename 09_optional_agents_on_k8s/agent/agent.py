@@ -105,13 +105,16 @@ def answer(message):
         {"role": "user", "content": message},
     ]
     # The model reasons (thinking ON), optionally calls the tool, reads the result, then
-    # answers. A few rounds is plenty for one tool.
+    # answers. A few rounds is plenty for one tool. Thinking ON means the reasoning trace
+    # alone can run ~1500 tokens before any answer, so the budget must cover reasoning AND
+    # the final content in the same turn; too small and the turn ends mid-thought with empty
+    # content (finish_reason=length) and the "no final answer content" error below.
     for _ in range(4):
         resp = client.chat.completions.create(
             model=MODEL,
             messages=messages,
             tools=TOOLS,
-            max_tokens=700,
+            max_tokens=4096,
             temperature=0.2,
             extra_body={"chat_template_kwargs": {"enable_thinking": True}},
         )
