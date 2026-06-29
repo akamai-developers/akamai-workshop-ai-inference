@@ -18,7 +18,7 @@ model reasons before it calls the tool and again before it writes the answer.
 
 import json
 import os
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from openai import OpenAI
 
@@ -170,4 +170,8 @@ class Handler(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     print(f"agent up on :8080, model {MODEL} via {client.base_url}", flush=True)
-    HTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
+    # Threaded so concurrent questions reach vLLM in parallel and batch there (the
+    # Module 9 load cell fires several at once). A single-threaded server would
+    # serialize them, defeating the continuous-batching demo and tripping the
+    # notebook's per-request timeout on the queued requests.
+    ThreadingHTTPServer(("0.0.0.0", 8080), Handler).serve_forever()
