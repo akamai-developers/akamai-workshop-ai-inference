@@ -11,7 +11,7 @@ The focus is not agent frameworks. It is the inference layer underneath them: pr
 Two ways in. Pick yours:
 
 - **At the Akamai workshop (Path A).** You have an access card. Open its URL, sign in with the password, and you land in JupyterLab with this repo cloned and a dedicated GPU and vLLM already running. Open `00_prerequisites/00_connect_and_verify.ipynb` and work the numbered folders in order. Nothing to install.
-- **Running it yourself (Path B).** Stand up the infrastructure with the separate [`akamai-workshop-platform`](https://github.com/akamai-developers/akamai-workshop-platform) repo using the own-inference preset, install `requirements.txt`, set the environment variables in the table below, then open Module 0.
+- **Running it yourself (Path B).** Create an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with an API token (includes free credit). Stand up the infrastructure with the separate [`akamai-workshop-platform`](https://github.com/akamai-developers/akamai-workshop-platform) repo using the own-inference preset, install `requirements.txt`, set the environment variables in the table below, then open Module 0.
 
 The same notebooks run in both paths.
 
@@ -31,12 +31,6 @@ By the end you can:
 6. Drive load until batching, queueing, KV pressure, and saturation show up in the metrics.
 7. Tune vLLM serving-policy knobs and keep or reject the change based on throughput and latency.
 8. Deploy an agent on the inference endpoint you own and watch its traffic in the same metrics.
-
-## Prerequisites
-
-**Account:**
-
-- Create an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with an API token (includes free credit).
 
 ## Prerequisite Paths
 
