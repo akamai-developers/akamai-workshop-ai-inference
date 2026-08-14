@@ -61,10 +61,12 @@ export KUBECONFIG=$PWD/kubeconfig.yaml
 kubectl apply -f ../manifests/vllm.yaml
 kubectl rollout status deploy/vllm --timeout=20m   # first boot downloads the models into the PVC
 
-kubectl port-forward svc/vllm 8000:8000            # leave this running
+while true; do kubectl port-forward svc/vllm 8000:8000; sleep 2; done   # leave this running
 ```
 
 If apply fails with `Kubernetes cluster unreachable`, the cluster's API endpoint was still coming up when terraform tried to install the helm charts. Wait a minute and run `terraform apply` again. It resumes where it stopped.
+
+The port-forward runs in a loop on purpose. Modules 5, 6, and 8 restart the vLLM pod, and a plain port-forward dies with its pod. The loop reconnects once the replacement pod is Ready; until then requests to `localhost:8000` fail, which is your cue that the model is still loading.
 
 In a second terminal, from the repo root:
 
