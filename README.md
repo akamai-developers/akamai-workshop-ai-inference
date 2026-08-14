@@ -11,7 +11,7 @@ The focus is not agent frameworks. It is the inference layer underneath them: pr
 Two ways in. Pick yours:
 
 - **At the Akamai workshop (Path A).** You have an access card. Open its URL, sign in with the password, and you land in JupyterLab with this repo cloned and a dedicated GPU and vLLM already running. Open `00_prerequisites/00_connect_and_verify.ipynb` and work the numbered folders in order. Nothing to install.
-- **Running it yourself (Path B).** Bring any Kubernetes cluster with an NVIDIA GPU, or create one on Akamai Cloud with the terraform in [`infra/`](infra/). Deploy `manifests/vllm.yaml`, set the environment variables in the table below, then open Module 0. Full steps in [Path B: run it yourself](#path-b-run-it-yourself). The GPU node bills hourly, so tear it down when you finish.
+- **Running it yourself (Path B).** Bring any Kubernetes cluster with an NVIDIA GPU, or create one on Akamai Cloud with the terraform in [`infra/`](infra/). Deploy `manifests/vllm.yaml`, set the environment variables in the table below, then open Module 0. Full steps in [Path B: run it yourself](#path-b-run-it-yourself). The GPU node bills hourly.
 
 The same notebooks run in both paths.
 
@@ -46,7 +46,7 @@ The one real requirement: a Kubernetes cluster with one NVIDIA GPU node, running
 
 **Bring your own cluster.** Any Kubernetes with an NVIDIA GPU works. Two lines in `manifests/vllm.yaml` are Akamai-specific, and each carries a comment saying what to change: the storage class, and the `pool: gpu` node selector. Apply the manifest, then set the environment variables below.
 
-**No cluster? Create one with the terraform in [`infra/`](infra/).** You need an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with a `LINODE_TOKEN` API token, plus terraform and kubectl installed. The GPU node is billed hourly at $0.52/hr, and the signup credit does not cover GPU plans, so tear the cluster down when you finish.
+**Start from zero with the terraform in [`infra/`](infra/).** You need an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with a `LINODE_TOKEN` API token, plus terraform and kubectl installed. The GPU node is billed hourly at $0.52/hr, and the signup credit does not cover GPU plans, so tear the cluster down when you finish.
 
 From the repo root:
 
@@ -83,7 +83,7 @@ kubectl delete -f manifests/vllm.yaml
 cd infra && terraform destroy
 ```
 
-**Only have an endpoint?** Modules 1 through 4 never touch the cluster. They only talk to the vLLM endpoint and its `/metrics`. If you already run vLLM somewhere, set `VLLM_HOST` and `MODEL_NAME` and start the concepts half while your cluster provisions. Modules 0 and 5 through 9 need the cluster. The endpoint must be vLLM specifically: the measurement labs parse vLLM's own metric names, so Ollama or llama.cpp behind an OpenAI-compatible URL will not work.
+**Modules 1 through 4 need only the endpoint.** They never touch the cluster. If you already run vLLM somewhere, set `VLLM_HOST` and `MODEL_NAME` and start the concepts half while your cluster provisions. Modules 0 and 5 through 9 need the cluster. The endpoint must be vLLM specifically: the measurement labs parse vLLM's own metric names, so Ollama or llama.cpp behind an OpenAI-compatible URL will not work.
 
 What you need in either path: a running vLLM OpenAI-compatible endpoint, a small model on a single GPU, a kubeconfig with permission to edit the vLLM Deployment (the hosted platform hands you a namespace-scoped one; your own cluster's admin kubeconfig works as is), and Jupyter with this repo cloned.
 
@@ -134,7 +134,7 @@ The full set runs longer than a single 120-minute session, so the live workshop 
 ## Modules
 
 - **`00_prerequisites/`** Get oriented and confirm everything is reachable.
-- **`01_inference_stack/`** Understand the runtime landscape, owning-vs-renting tradeoffs, and one request path.
+- **`01_inference_stack/`** Compare inference runtimes, owning-vs-renting tradeoffs, and one request path.
 - **`02_units_and_memory_budget/`** Count model memory, tokens, VRAM, bandwidth, and KV cache headroom.
 - **`03_prefill_decode_kv_cache/`** Separate prefill from decode and derive the KV cache cost.
 - **`04_dense_vs_moe/`** Explain dense vs MoE decode behavior with the roofline lens.
