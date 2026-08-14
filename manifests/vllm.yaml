@@ -20,6 +20,8 @@ metadata:
   labels:
     app: vllm
 spec:
+  # Akamai-specific. On another cluster, set this to a storage class your
+  # cluster offers: `kubectl get storageclass`.
   storageClassName: linode-block-storage
   accessModes:
     - ReadWriteOnce
@@ -52,6 +54,10 @@ spec:
       # Prevent Kubernetes service-link variables such as VLLM_PORT from being
       # injected into the container. vLLM may misread those as its own settings.
       enableServiceLinks: false
+      # Akamai-specific: matches the label the infra/ terraform puts on the
+      # GPU pool. On another cluster, label your GPU node to match
+      # (`kubectl label node <node> pool=gpu`) or change these two lines to a
+      # label your nodes already carry.
       nodeSelector:
         pool: gpu
       tolerations:

@@ -11,7 +11,7 @@ The focus is not agent frameworks. It is the inference layer underneath them: pr
 Two ways in. Pick yours:
 
 - **At the Akamai workshop (Path A).** You have an access card. Open its URL, sign in with the password, and you land in JupyterLab with this repo cloned and a dedicated GPU and vLLM already running. Open `00_prerequisites/00_connect_and_verify.ipynb` and work the numbered folders in order. Nothing to install.
-- **Running it yourself (Path B).** Create an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with an API token (includes free credit). Stand up the infrastructure with the separate [`akamai-workshop-platform`](https://github.com/akamai-developers/akamai-workshop-platform) repo using the own-inference preset, install `requirements.txt`, set the environment variables in the table below, then open Module 0.
+- **Running it yourself (Path B).** Bring any Kubernetes cluster with an NVIDIA GPU, or create one on Akamai Cloud with the terraform in [`infra/`](infra/). Deploy `manifests/vllm.yaml`, set the environment variables in the table below, then open Module 0. Full steps in [Path B: run it yourself](#path-b-run-it-yourself). The GPU node bills hourly.
 
 The same notebooks run in both paths.
 
@@ -40,11 +40,56 @@ The notebooks never provision infrastructure. They assume a vLLM endpoint alread
 
 You receive an access card. Open the URL, sign in with the password on the card, and you land in JupyterLab. Your namespace, kubeconfig, dedicated GPU, and deliberately under-tuned vLLM are already running. Module 0 verifies the connection and orients you.
 
-### Path B: bring your own environment
+### Path B: run it yourself
 
-You run the same modules against your own Akamai Cloud account or any Kubernetes cluster with a GPU. Stand up the infrastructure first using the `akamai-workshop-platform` repo, then point the notebooks at your endpoint by setting the environment variables below.
+The one real requirement: a Kubernetes cluster with one NVIDIA GPU node, running the vLLM Deployment from `manifests/vllm.yaml`. Two ways to get there.
 
-What you need in either path: a running vLLM OpenAI-compatible endpoint, a small model on a single GPU, a kubeconfig scoped to your namespace with permission to edit your vLLM deployment, and JupyterLab with this repo cloned.
+**Bring your own cluster.** Any Kubernetes with an NVIDIA GPU works. Two lines in `manifests/vllm.yaml` are Akamai-specific, and each carries a comment saying what to change: the storage class, and the `pool: gpu` node selector. Apply the manifest, then set the environment variables below.
+
+**Start from zero with the terraform in [`infra/`](infra/).** You need an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with a `LINODE_TOKEN` API token, plus terraform and kubectl installed. The GPU node is billed hourly at $0.52/hr, and the signup credit does not cover GPU plans, so tear the cluster down when you finish.
+
+From the repo root:
+
+```bash
+cd infra
+terraform init
+terraform apply                    # cluster + GPU pool + NVIDIA gpu-operator, ~10 min
+
+terraform output -raw kubeconfig | base64 -d > kubeconfig.yaml
+export KUBECONFIG=$PWD/kubeconfig.yaml
+
+kubectl apply -f ../manifests/vllm.yaml
+kubectl rollout status deploy/vllm --timeout=20m   # first boot downloads the models into the PVC
+
+while true; do kubectl port-forward svc/vllm 8000:8000; sleep 2; done   # leave this running
+```
+
+If apply fails with `Kubernetes cluster unreachable`, the cluster's API endpoint was still coming up when terraform tried to install the helm charts. Wait a minute and run `terraform apply` again. It resumes where it stopped.
+
+The port-forward runs in a loop on purpose. Modules 5, 6, and 8 restart the vLLM pod, and a plain port-forward dies with its pod. The loop reconnects once the replacement pod is Ready; until then requests to `localhost:8000` fail, which is your cue that the model is still loading.
+
+In a second terminal, from the repo root:
+
+```bash
+export KUBECONFIG=$PWD/infra/kubeconfig.yaml
+export VLLM_HOST=http://localhost:8000/v1
+export MODEL_NAME=Qwen/Qwen3-4B
+pip install -r requirements.txt
+jupyter lab
+```
+
+Open Module 0. The other variables in the table below keep their defaults.
+
+**Tear it down when you finish.** Delete the workload first so the CSI driver removes the block-storage volume, then destroy the cluster:
+
+```bash
+kubectl delete -f manifests/vllm.yaml
+cd infra && terraform destroy
+```
+
+**Modules 1 through 4 need only the endpoint.** They never touch the cluster. If you already run vLLM somewhere, set `VLLM_HOST` and `MODEL_NAME` and start the concepts half while your cluster provisions. Modules 0 and 5 through 9 need the cluster. The endpoint must be vLLM specifically: the measurement labs parse vLLM's own metric names, so Ollama or llama.cpp behind an OpenAI-compatible URL will not work.
+
+What you need in either path: a running vLLM OpenAI-compatible endpoint, a small model on a single GPU, a kubeconfig with permission to edit the vLLM Deployment (the hosted platform hands you a namespace-scoped one; your own cluster's admin kubeconfig works as is), and Jupyter with this repo cloned.
 
 ## How To Start
 
@@ -93,7 +138,7 @@ The full set runs longer than a single 120-minute session, so the live workshop 
 ## Modules
 
 - **`00_prerequisites/`** Get oriented and confirm everything is reachable.
-- **`01_inference_stack/`** Understand the runtime landscape, owning-vs-renting tradeoffs, and one request path.
+- **`01_inference_stack/`** Compare inference runtimes, owning-vs-renting tradeoffs, and one request path.
 - **`02_units_and_memory_budget/`** Count model memory, tokens, VRAM, bandwidth, and KV cache headroom.
 - **`03_prefill_decode_kv_cache/`** Separate prefill from decode and derive the KV cache cost.
 - **`04_dense_vs_moe/`** Explain dense vs MoE decode behavior with the roofline lens.
@@ -111,6 +156,7 @@ agents-that-own-their-inference/
 ├── COURSE_OUTLINE.md
 ├── requirements.txt
 ├── pyproject.toml
+├── infra/                 Path B paved path: terraform for LKE + GPU pool + gpu-operator
 ├── common/
 │   ├── config.py          reads VLLM_HOST, MODEL_NAME, NAMESPACE, KUBECONFIG
 │   ├── metrics.py         scrapes and parses vLLM /metrics
