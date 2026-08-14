@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and adjust. Every variable has a working default,
+# so an empty tfvars is also fine.
+
+# cluster_label = "own-inference"
+
+# Region must offer RTX 4000 Ada plans.
+# region = "us-sea"
+
+# Verify against `linode-cli lke versions-list` if apply rejects it.
+# k8s_version = "1.35"
+
+# Bump to g2-gpu-rtx4000a1-m ($0.67/hr) if you want headroom for your own
+# experiments beyond the workshop models.
+# gpu_node_type = "g2-gpu-rtx4000a1-s"
