@@ -69,6 +69,10 @@ resource "linode_lke_node_pool" "gpu" {
 
 # NVIDIA gpu-operator: installs the driver and device plugin so the GPU node
 # advertises `nvidia.com/gpu`. Until it finishes, the vLLM pod stays Pending.
+#
+# The cluster's API endpoint DNS can lag the cluster resource by a minute. If
+# the first apply fails here with "Kubernetes cluster unreachable", run
+# `terraform apply` again; it resumes with the cluster already in state.
 resource "helm_release" "gpu_operator" {
   name             = "gpu-operator"
   repository       = "https://helm.ngc.nvidia.com/nvidia"

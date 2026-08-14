@@ -64,6 +64,8 @@ kubectl rollout status deploy/vllm --timeout=20m   # first boot downloads the mo
 kubectl port-forward svc/vllm 8000:8000            # leave this running
 ```
 
+If apply fails with `Kubernetes cluster unreachable`, the cluster's API endpoint was still coming up when terraform tried to install the helm charts. Wait a minute and run `terraform apply` again. It resumes where it stopped.
+
 In a second terminal, from the repo root:
 
 ```bash
