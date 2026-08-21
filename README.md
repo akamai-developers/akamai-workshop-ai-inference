@@ -46,7 +46,7 @@ The one real requirement: a Kubernetes cluster with one NVIDIA GPU node, running
 
 **Bring your own cluster.** Any Kubernetes with an NVIDIA GPU works. Two lines in `manifests/vllm.yaml` are Akamai-specific, and each carries a comment saying what to change: the storage class, and the `pool: gpu` node selector. Apply the manifest, then set the environment variables below.
 
-**Start from zero with the terraform in [`infra/`](infra/).** You need an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-31126-M055) with a `LINODE_TOKEN` API token, plus terraform and kubectl installed. The GPU node is billed hourly at $0.52/hr, and the signup credit does not cover GPU plans, so tear the cluster down when you finish.
+**Start from zero with the terraform in [`infra/`](infra/).** You need an [Akamai Cloud account](http://login.linode.com/signup?promo=akm-dev-git-300-72326-P153) with a `LINODE_TOKEN` API token, plus terraform and kubectl installed. The GPU node is billed hourly at $0.52/hr, and the signup credit does not cover GPU plans, so tear the cluster down when you finish.
 
 From the repo root:
 
